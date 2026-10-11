@@ -1,0 +1,1 @@
+# @opinionated-ts/write-once
