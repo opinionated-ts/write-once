@@ -16,6 +16,7 @@ export default defineConfig({
 
   words: [
     ...cspellConfig.words,
+    "citty",
     // Custom words here
   ],
 
