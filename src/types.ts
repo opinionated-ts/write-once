@@ -214,16 +214,23 @@ export interface Diagnostic {
 
 /** Context provided to a hook that customizes generated content. */
 export interface HookContext {
+  /** Pipeline lifecycle stage; v1 executes the pre-write stage. */
   stage: string;
+  /** Destination file being planned. */
   destination: string;
+  /** Exact marker tokens, delimiter-line spans, body span, and full block span. */
   marker: MarkerBlock;
+  /** Extracted source text before the hook runs. */
   content: string;
+  /** Original source reference from the destination marker. */
   sourceReference?: string;
+  /** Selector used to extract content from the resolved resource. */
   selector?: SourceSelector;
+  /** Resolved resource, including metadata supplied by its resolver. */
   source?: ResolvedResource;
 }
 
-/** Default body-only replacement, or explicit replacement of the full block. */
+/** Body-only text preserves marker lines; fullText replaces the complete block. */
 export type HookOutput = { text: string; fullText?: never } | { fullText: string; text?: never };
 
 /**

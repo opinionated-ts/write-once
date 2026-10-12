@@ -117,11 +117,10 @@ function selectHook(hooks: readonly GenerationHook[]): GenerationHook | undefine
   return ordered(hooks.filter((hook) => hook.stage === "pre-write"))[0];
 }
 
-function prepareBodyText(replacement: string, destination: string, span: TextSpan): string {
+function prepareBodyText(replacement: string, destination: string): string {
   const newline = /\r\n|\r|\n/.exec(destination)?.[0] ?? "\n";
   let prepared = replacement.replace(/\r\n|\r|\n/g, newline);
-  const originalBody = destination.slice(span.start, span.end);
-  if (/[\r\n]$/.test(originalBody) && !/[\r\n]$/.test(prepared)) prepared += newline;
+  if (prepared.length > 0 && !/[\r\n]$/.test(prepared)) prepared += newline;
   return prepared;
 }
 
@@ -262,7 +261,7 @@ async function planBlock(
   } else if (typeof output.text === "string") {
     replacement = {
       span: marker.bodySpan,
-      text: prepareBodyText(output.text, text, marker.bodySpan),
+      text: prepareBodyText(output.text, text),
       source,
       selector,
     };
