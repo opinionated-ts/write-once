@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  GenerationHook,
   HookOutput,
   PluginContribution,
   ResolvedResource,
@@ -46,12 +47,17 @@ describe("public types", () => {
   });
 
   it("allows plugins to contribute any combination of capabilities", () => {
+    const markdownHook: GenerationHook = {
+      id: "markdown-fence",
+      stage: "pre-write",
+      run: ({ content }) => ({ text: "```text\n" + content + "\n```" }),
+    };
     const hookOnlyPlugin: PluginContribution = {
       name: "markdown",
-      hooks: [],
+      hooks: [markdownHook],
     };
 
-    expect(hookOnlyPlugin.hooks).toEqual([]);
+    expect(hookOnlyPlugin.hooks).toEqual([markdownHook]);
     expect(hookOnlyPlugin.resolvers).toBeUndefined();
     expect(hookOnlyPlugin.extractors).toBeUndefined();
   });

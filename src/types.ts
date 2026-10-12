@@ -117,7 +117,7 @@ export interface GeneratedDestination {
 export interface PluginContribution<
   Resolver = ResourceResolver,
   Extractor = ContentExtractor,
-  Hook = unknown,
+  Hook = GenerationHook,
 > {
   name?: string;
   resolvers?: readonly Resolver[];
@@ -225,3 +225,17 @@ export interface HookContext {
 
 /** Default body-only replacement, or explicit replacement of the full block. */
 export type HookOutput = { text: string; fullText?: never } | { fullText: string; text?: never };
+
+/**
+ * Customizes content at a named generation stage.
+ *
+ * Hooks may be synchronous or asynchronous. When multiple hooks target the
+ * same stage, the pipeline can order them by priority and then registration
+ * order. A hook must return an explicit replacement scope.
+ */
+export interface GenerationHook {
+  id: string;
+  stage: string;
+  priority?: number;
+  run(context: HookContext): HookOutput | Promise<HookOutput>;
+}

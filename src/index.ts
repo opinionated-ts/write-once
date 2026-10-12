@@ -9,6 +9,7 @@ export type {
   DiagnosticStage,
   ExtractedContent,
   GeneratedDestination,
+  GenerationHook,
   HookContext,
   HookOutput,
   MarkerAttributes,
