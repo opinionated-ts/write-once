@@ -43,6 +43,31 @@ export interface DestinationPlan {
 
 type DiagnosticFailure = ReturnType<typeof error<Diagnostic>>;
 
+function markerErrorLocation(cause: unknown, destination: string): Diagnostic["markerLocation"] {
+  if (typeof cause !== "object" || cause === null || !("context" in cause)) return undefined;
+  const context = cause.context;
+  if (typeof context !== "object" || context === null || !("public" in context)) return undefined;
+  const details = context.public;
+  if (typeof details !== "object" || details === null) return undefined;
+  const { line, column } = details as { line?: unknown; column?: unknown };
+  if (
+    typeof line !== "number" ||
+    !Number.isSafeInteger(line) ||
+    line < 1 ||
+    typeof column !== "number" ||
+    !Number.isSafeInteger(column) ||
+    column < 1
+  ) {
+    return undefined;
+  }
+
+  return {
+    resource: destination,
+    start: { line, column },
+    end: { line, column },
+  };
+}
+
 function diagnosticError(
   stage: Diagnostic["stage"],
   message: string,
@@ -299,6 +324,7 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
       stage: "marker" as const,
       message: scanned.error.message,
       file: destination,
+      markerLocation: markerErrorLocation(scanned.error, destination),
       cause: scanned.error,
     } satisfies Diagnostic);
   }

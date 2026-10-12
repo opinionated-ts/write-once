@@ -25,6 +25,48 @@ afterEach(async () => {
 });
 
 describe("generation plan edge cases", () => {
+  it("preserves line and column for marker syntax diagnostics", async () => {
+    const { root, config } = await setup();
+    const destination = join(root, "README.md");
+    const result = await planDestinationFile({
+      destination,
+      text: ["first line", '  fragment source="./source.md" source="./other.md"', "/fragment"].join(
+        "\n",
+      ),
+      config,
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error).toMatchObject({
+        markerLocation: {
+          resource: destination,
+          start: { line: 2, column: 33 },
+        },
+      });
+    }
+  });
+
+  it("preserves line and column for marker structure diagnostics", async () => {
+    const { root, config } = await setup();
+    const destination = join(root, "README.md");
+    const result = await planDestinationFile({
+      destination,
+      text: ["first line", "  /fragment"].join("\n"),
+      config,
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error).toMatchObject({
+        markerLocation: {
+          resource: destination,
+          start: { line: 2, column: 3 },
+        },
+      });
+    }
+  });
+
   it("preserves inline delimiter wrappers across multiple generated blocks", async () => {
     const { root, config } = await setup();
     const text = [

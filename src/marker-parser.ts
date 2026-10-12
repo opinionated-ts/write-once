@@ -67,7 +67,7 @@ function findMarker(line: string) {
   }
 
   if (found.length > 1) {
-    return { kind: "open" as const, start: -1, end: -1 };
+    return { kind: "open" as const, start: -1, end: -1, column: found[1]!.start + 1 };
   }
 
   return found[0];
@@ -198,8 +198,8 @@ export function parseMarkerLine(lineText: string, options: ParseMarkerLineOption
     return makeSyntaxError("A line cannot contain multiple fragment markers.", {
       resource,
       line,
-      column: 1,
-      offset,
+      column: "column" in marker ? marker.column : 1,
+      offset: offset + (("column" in marker ? marker.column : 1) - 1),
     });
   }
 
