@@ -54,6 +54,29 @@ describe("loadWriteOnceConfig", () => {
     }
   });
 
+  it("extends a shared config through c12", async () => {
+    const cwd = await createProject();
+    await writeFile(
+      join(cwd, "write-once.base.ts"),
+      "export default { root: 'shared', exclude: ['generated/**'] };",
+      "utf8",
+    );
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      "export default { extends: ['./write-once.base.ts'], include: ['content/**/*.md'] };",
+      "utf8",
+    );
+
+    const result = await loadWriteOnceConfig({ cwd });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value.config.root).toBe(join(cwd, "shared"));
+      expect(result.value.config.include).toEqual(["content/**/*.md"]);
+      expect(result.value.config.exclude).toEqual(["generated/**"]);
+    }
+  });
+
   it("reports ambiguous discovery and allows explicit selection", async () => {
     const cwd = await createProject();
     await writeFile(join(cwd, "write-once.config.json"), JSON.stringify({ root: "one" }), "utf8");

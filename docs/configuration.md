@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration is optional. Without a config file, write-once uses the CLI working directory as its project root, includes `**/*`, and excludes Git metadata and dependency directories with `**/.git/**` and `**/node_modules/**`.
+Configuration is optional. Without a config file, write-once uses the CLI working directory as its project `root`, includes `**/*`, and excludes Git metadata and dependency directories with `**/.git/**` and `**/node_modules/**`.
 
 ## File discovery
 
@@ -9,6 +9,8 @@ c12 supports these config extensions: `.js`, `.ts`, `.mjs`, `.cjs`, `.mts`, `.ct
 Automatic discovery fails if more than one supported `write-once.config.*` file is found. Select one explicitly with `write-once generate --config <path>`; config files are never silently merged. The path is resolved relative to the CLI working directory.
 
 ## TypeScript configuration
+
+TypeScript is the recommended format because it supports the complete configuration API, including programmatic extensions (`resolvers`, `extractors`, and `hooks`).
 
 Use `defineConfig` for editor autocomplete and type checking:
 
@@ -34,32 +36,29 @@ export default {
 } satisfies UserConfig;
 ```
 
-## JSON configuration
+### Extending another config
 
-The package publishes a JSON Schema generated from the Zod configuration schema. Reference it from a JSON configuration file to enable editor validation and autocomplete:
-
-```json
-{
-  "$schema": "https://unpkg.com/@opinionated-ts/write-once@0.1.0/write-once.schema.json",
-  "root": ".",
-  "include": ["**/*.md"],
-  "exclude": ["generated/**"],
-  "respectGitignore": true
-}
-```
-
-The generated schema validates `root`, `include`, `exclude`, and `respectGitignore`. Programmatic extensions (`resolvers`, `extractors`, and `hooks`) require executable TypeScript or JavaScript config files. The same Zod schema remains available at runtime from the package root as `writeOnceConfigSchema`.
-
-## Options
+Configuration files can extend a shared configuration. Paths are resolved by c12 relative to the config file:
 
 ```ts
-export default {
-  root: ".",
-  include: ["**/*.md"],
-  exclude: ["generated/**"],
-  respectGitignore: true,
-};
+import { defineConfig } from "@opinionated-ts/write-once";
+
+export default defineConfig({
+  extends: ["./config/write-once.base.ts"],
+  include: ["content/**/*.md"],
+});
 ```
+
+Use executable TypeScript or JavaScript configs whenever you need programmatic behavior.
+
+## Other formats
+
+JSON and YAML are supported for static configuration, but cannot express executable behavior such as custom resolvers, extractors, hooks, or programmatic composition. They are documented separately as secondary options:
+
+- [JSON configuration](json-configuration.md)
+- [YAML configuration](yaml-configuration.md)
+
+## Options
 
 - `root` is resolved relative to the CLI working directory unless it is absolute. Source references are resolved from this effective root.
 - `include` selects destination paths relative to `root`; `exclude` filters those matches afterward, so exclusions take precedence.
@@ -67,7 +66,7 @@ export default {
 - If `include` is omitted, the default is `**/*`.
 - If `exclude` is omitted, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable those defaults.
 - `respectGitignore` defaults to `true` and applies root and nested `.gitignore` rules during discovery. Set it to `false` to ignore `.gitignore` files; `include` and `exclude` still apply.
-- `resolvers`, `extractors`, and `hooks` are programmatic extension points. Function-valued extensions require an executable config such as TypeScript or JavaScript; JSON/YAML/TOML cannot contain functions.
+- `resolvers`, `extractors`, and `hooks` are programmatic extension points available in TypeScript or JavaScript config files.
 
 ## Security
 

@@ -11,8 +11,5 @@ export default defineConfig({
   outputOptions: {
     banner: (chunk) => (chunk.fileName.includes("cli") ? "#!/usr/bin/env node" : ""),
   },
-  exports: {
-    bin: true,
-    exclude: ["cli"],
-  },
+  exports: false,
 });

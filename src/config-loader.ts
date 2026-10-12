@@ -76,7 +76,7 @@ export async function loadWriteOnceConfig(options: LoadWriteOnceConfigOptions) {
       globalRc: false,
       dotenv: false,
       envName: false,
-      extend: false,
+      extend: {},
       defaults: {},
     });
 

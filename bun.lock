@@ -10,7 +10,6 @@
         "citty": "^0.2.2",
         "ignore": "^7.0.12",
         "picocolors": "^1.1.1",
-        "zod": "^4.6.6",
       },
       "devDependencies": {
         "@opinionated-ts/config": "^1.9.1",
@@ -21,6 +20,7 @@
         "tsdown": "^0.23.1",
         "typescript": "^7.0.2",
         "vitest": "^5.0.3",
+        "zod": "^4.6.6",
       },
     },
   },

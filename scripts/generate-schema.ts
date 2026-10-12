@@ -2,7 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { z } from "zod";
 
-import { writeOnceConfigSchema } from "../src/config.js";
+import { writeOnceConfigSchema } from "./config-schema.js";
 
 const schema = z.toJSONSchema(writeOnceConfigSchema, {
   target: "draft-2020-12",

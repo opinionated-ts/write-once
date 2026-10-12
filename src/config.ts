@@ -1,7 +1,6 @@
 import { error, ok } from "@opinionated-ts/result";
 import { createDefineConfig } from "c12";
 import { resolve } from "node:path";
-import { z } from "zod";
 
 import type { ContentExtractor, GenerationHook, ResourceResolver } from "./types.js";
 
@@ -25,20 +24,13 @@ export type WriteOnceConfig = UserConfig;
 /** TypeScript configuration helper with c12's reserved environment keys. */
 export const defineConfig = createDefineConfig<UserConfig & Record<string, unknown>>();
 
-/** Schema for the JSON-serializable options in write-once configuration files. */
-export const writeOnceConfigSchema = z
-  .object({
-    root: z
-      .string()
-      .refine((value) => value.trim().length > 0)
-      .optional(),
-    include: z.array(z.string().refine((value) => value.trim().length > 0)).optional(),
-    exclude: z.array(z.string().refine((value) => value.trim().length > 0)).optional(),
-    respectGitignore: z.boolean().optional(),
-  })
-  .passthrough();
-
-export type WriteOnceJsonConfig = z.infer<typeof writeOnceConfigSchema>;
+/** JSON-serializable configuration options supported by JSON and YAML files. */
+export interface WriteOnceJsonConfig {
+  root?: string;
+  include?: readonly string[];
+  exclude?: readonly string[];
+  respectGitignore?: boolean;
+}
 
 export interface NormalizedWriteOnceConfig {
   root: string;
@@ -105,28 +97,34 @@ export function validateConfig(
 ): ReturnType<typeof ok<NormalizedWriteOnceConfig>> | ReturnType<typeof invalid> {
   if (!isRecord(value)) return invalid("Configuration must be an object.");
 
-  const parsed = writeOnceConfigSchema.safeParse(value);
-  if (!parsed.success) {
-    const field = parsed.error.issues[0]?.path[0];
-    const messages: Record<string, string> = {
-      root: '"root" must be a non-empty path string.',
-      include: '"include" must be an array of non-empty pattern strings.',
-      exclude: '"exclude" must be an array of non-empty pattern strings.',
-      respectGitignore: '"respectGitignore" must be a boolean.',
-    };
-    return invalid(
-      typeof field === "string"
-        ? (messages[field] ?? "Configuration contains an invalid value.")
-        : "Configuration contains an invalid value.",
-      typeof field === "string" ? field : undefined,
-    );
+  const root = value["root"];
+  const include = value["include"];
+  const exclude = value["exclude"];
+  const respectGitignore = value["respectGitignore"];
+
+  if (root !== undefined && (typeof root !== "string" || root.trim().length === 0)) {
+    return invalid('"root" must be a non-empty path string.', "root");
+  }
+  if (
+    include !== undefined &&
+    (!Array.isArray(include) ||
+      !include.every((pattern) => typeof pattern === "string" && pattern.trim().length > 0))
+  ) {
+    return invalid('"include" must be an array of non-empty pattern strings.', "include");
+  }
+  if (
+    exclude !== undefined &&
+    (!Array.isArray(exclude) ||
+      !exclude.every((pattern) => typeof pattern === "string" && pattern.trim().length > 0))
+  ) {
+    return invalid('"exclude" must be an array of non-empty pattern strings.', "exclude");
+  }
+  if (respectGitignore !== undefined && typeof respectGitignore !== "boolean") {
+    return invalid('"respectGitignore" must be a boolean.', "respectGitignore");
   }
 
-  const config = parsed.data;
-  const root = config.root;
-  const include = config.include ?? ["**/*"];
-  const exclude = config.exclude ?? DEFAULT_EXCLUDE_PATTERNS;
-  const respectGitignore = config.respectGitignore ?? true;
+  const includePatterns = include ?? ["**/*"];
+  const excludePatterns = exclude ?? DEFAULT_EXCLUDE_PATTERNS;
 
   const resolvers = value["resolvers"] ?? [];
   if (!Array.isArray(resolvers) || !resolvers.every(isResolver)) {
@@ -155,9 +153,9 @@ export function validateConfig(
 
   return ok({
     root: resolve(cwd, typeof root === "string" ? root : "."),
-    include: [...include],
-    exclude: [...exclude],
-    respectGitignore,
+    include: [...includePatterns],
+    exclude: [...excludePatterns],
+    respectGitignore: respectGitignore ?? true,
     resolvers: [...resolvers],
     extractors: [...extractors],
     hooks: [...hooks],
