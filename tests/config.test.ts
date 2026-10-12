@@ -34,6 +34,7 @@ describe("validateConfig", () => {
       root: "/repo/packages/docs",
       include: ["**/*.md"],
       exclude: ["generated/**"],
+      respectGitignore: true,
       resolvers: [],
       extractors: [],
       hooks: [],
@@ -48,6 +49,7 @@ describe("validateConfig", () => {
       expect(result.value.root).toBe("/repo");
       expect(result.value.include).toEqual(["**/*"]);
       expect(result.value.exclude).toEqual(["**/.git/**", "**/node_modules/**"]);
+      expect(result.value.respectGitignore).toBe(true);
     }
   });
 
@@ -70,6 +72,7 @@ describe("validateConfig", () => {
     [{ root: "" }, '"root" must be a non-empty path string.'],
     [{ include: [""] }, '"include" must be an array of non-empty pattern strings.'],
     [{ exclude: "dist/**" }, '"exclude" must be an array of non-empty pattern strings.'],
+    [{ respectGitignore: "false" }, '"respectGitignore" must be a boolean.'],
     [
       { resolvers: [{}] },
       '"resolvers" must contain resolver objects with id, canResolve, and resolve.',

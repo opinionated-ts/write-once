@@ -20,7 +20,15 @@ function config(
   include: string[] = ["**/*"],
   exclude: string[] = [],
 ): NormalizedWriteOnceConfig {
-  return { root, include, exclude, resolvers: [], extractors: [], hooks: [] };
+  return {
+    root,
+    include,
+    exclude,
+    respectGitignore: true,
+    resolvers: [],
+    extractors: [],
+    hooks: [],
+  };
 }
 
 afterEach(async () => {
@@ -56,6 +64,41 @@ describe("discoverDestinationFiles", () => {
     );
 
     expect(result.files).toEqual([join(root, "README.md")]);
+  });
+
+  it("respects root and nested .gitignore files by default", async () => {
+    const root = await createProject();
+    await mkdir(join(root, "cache"));
+    await mkdir(join(root, "packages", "app"), { recursive: true });
+    await writeFile(join(root, ".gitignore"), "cache/\n*.secret\n", "utf8");
+    await writeFile(join(root, "README.md"), "readme", "utf8");
+    await writeFile(join(root, "cache", "output.md"), "ignored directory", "utf8");
+    await writeFile(join(root, "token.secret"), "ignored file", "utf8");
+    await writeFile(join(root, "packages", ".gitignore"), "/*.md\n!/keep.md\n", "utf8");
+    await writeFile(join(root, "packages", "ignored.md"), "ignored nested file", "utf8");
+    await writeFile(join(root, "packages", "keep.md"), "re-included nested file", "utf8");
+    await writeFile(join(root, "packages", "app", "README.md"), "nested README", "utf8");
+
+    const result = await discoverDestinationFiles(config(root, ["**/*"], ["**/.gitignore"]));
+
+    expect(result.files).toEqual([
+      join(root, "README.md"),
+      join(root, "packages", "app", "README.md"),
+      join(root, "packages", "keep.md"),
+    ]);
+  });
+
+  it("can disable .gitignore filtering through config", async () => {
+    const root = await createProject();
+    await writeFile(join(root, ".gitignore"), "ignored.md\n", "utf8");
+    await writeFile(join(root, "ignored.md"), "content", "utf8");
+
+    const result = await discoverDestinationFiles({
+      ...config(root, ["**/*"]),
+      respectGitignore: false,
+    });
+
+    expect(result.files).toContain(join(root, "ignored.md"));
   });
 
   it("reports no matches as a warning", async () => {

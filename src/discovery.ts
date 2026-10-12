@@ -1,5 +1,5 @@
 import ignore from "ignore";
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
 
 import type { NormalizedWriteOnceConfig } from "./config.js";
@@ -8,6 +8,11 @@ import type { Diagnostic } from "./types.js";
 export interface FileDiscoveryResult {
   files: string[];
   diagnostics: Diagnostic[];
+}
+
+interface GitIgnoreMatcher {
+  base: string;
+  matcher: ReturnType<typeof ignore>;
 }
 
 function toRelativePath(root: string, path: string): string {
@@ -38,6 +43,32 @@ function matchesExclude(path: string, matchers: ReturnType<typeof compilePattern
   return matchers.some((matcher) => matcher.ignores(path));
 }
 
+async function loadGitIgnoreMatcher(directory: string): Promise<GitIgnoreMatcher | undefined> {
+  try {
+    const content = await readFile(resolve(directory, ".gitignore"), "utf8");
+    return { base: directory, matcher: ignore().add(content) };
+  } catch (cause) {
+    if (cause instanceof Error && "code" in cause && cause.code === "ENOENT") return undefined;
+    throw cause;
+  }
+}
+
+function isGitIgnored(
+  path: string,
+  isDirectory: boolean,
+  matchers: readonly GitIgnoreMatcher[],
+): boolean {
+  let ignored = false;
+  for (const { base, matcher } of matchers) {
+    const relativePath = toRelativePath(base, path);
+    if (relativePath === ".." || relativePath.startsWith("../")) continue;
+    const result = matcher.test(isDirectory ? relativePath + "/" : relativePath);
+    if (result.ignored) ignored = true;
+    else if (result.unignored) ignored = false;
+  }
+  return ignored;
+}
+
 /** Discover destination files in deterministic order using Git-ignore-style patterns. */
 export async function discoverDestinationFiles(
   config: NormalizedWriteOnceConfig,
@@ -66,7 +97,31 @@ export async function discoverDestinationFiles(
   const root = resolve(config.root);
   const files: Array<{ absolute: string; relative: string }> = [];
 
-  async function visit(directory: string): Promise<void> {
+  async function visit(
+    directory: string,
+    inheritedGitIgnore: readonly GitIgnoreMatcher[],
+  ): Promise<void> {
+    let gitIgnoreMatchers = inheritedGitIgnore;
+    if (config.respectGitignore) {
+      try {
+        const localMatcher = await loadGitIgnoreMatcher(directory);
+        if (localMatcher !== undefined) gitIgnoreMatchers = [...inheritedGitIgnore, localMatcher];
+      } catch (cause) {
+        diagnostics.push({
+          severity: "error",
+          message:
+            "Cannot read .gitignore in " +
+            JSON.stringify(directory) +
+            ": " +
+            (cause instanceof Error ? cause.message : String(cause)),
+          stage: "discovery",
+          file: resolve(directory, ".gitignore"),
+          cause,
+        });
+        return;
+      }
+    }
+
     let entries;
     try {
       entries = await readdir(directory, { withFileTypes: true });
@@ -89,7 +144,10 @@ export async function discoverDestinationFiles(
       const relativePath = toRelativePath(root, absolute);
 
       if (entry.isDirectory()) {
-        if (!matchesExclude(`${relativePath}/__write_once_directory__`, excludeMatchers)) {
+        if (
+          !matchesExclude(relativePath + "/__write_once_directory__", excludeMatchers) &&
+          !(config.respectGitignore && isGitIgnored(absolute, true, gitIgnoreMatchers))
+        ) {
           childDirectories.push(absolute);
         }
         continue;
@@ -98,16 +156,17 @@ export async function discoverDestinationFiles(
       if (!entry.isFile()) continue;
       if (
         matchesInclude(relativePath, includeMatchers) &&
-        !matchesExclude(relativePath, excludeMatchers)
+        !matchesExclude(relativePath, excludeMatchers) &&
+        !(config.respectGitignore && isGitIgnored(absolute, false, gitIgnoreMatchers))
       ) {
         files.push({ absolute, relative: relativePath });
       }
     }
 
-    await Promise.all(childDirectories.map(visit));
+    await Promise.all(childDirectories.map((child) => visit(child, gitIgnoreMatchers)));
   }
 
-  await visit(root);
+  await visit(root, []);
   files.sort((left, right) =>
     left.relative < right.relative ? -1 : left.relative > right.relative ? 1 : 0,
   );

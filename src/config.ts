@@ -11,6 +11,7 @@ export interface WriteOnceConfig {
   root?: string;
   include?: readonly string[];
   exclude?: readonly string[];
+  respectGitignore?: boolean;
   resolvers?: readonly ResourceResolver[];
   extractors?: readonly ContentExtractor[];
   hooks?: readonly GenerationHook[];
@@ -20,6 +21,7 @@ export interface NormalizedWriteOnceConfig {
   root: string;
   include: readonly string[];
   exclude: readonly string[];
+  respectGitignore: boolean;
   resolvers: readonly ResourceResolver[];
   extractors: readonly ContentExtractor[];
   hooks: readonly GenerationHook[];
@@ -100,6 +102,10 @@ export function validateConfig(
   if (!isStringArray(exclude))
     return invalid('"exclude" must be an array of non-empty pattern strings.', "exclude");
 
+  const respectGitignore = value["respectGitignore"] ?? true;
+  if (typeof respectGitignore !== "boolean")
+    return invalid('"respectGitignore" must be a boolean.', "respectGitignore");
+
   const resolvers = value["resolvers"] ?? [];
   if (!Array.isArray(resolvers) || !resolvers.every(isResolver)) {
     return invalid(
@@ -129,6 +135,7 @@ export function validateConfig(
     root: resolve(cwd, typeof root === "string" ? root : "."),
     include: [...include],
     exclude: [...exclude],
+    respectGitignore,
     resolvers: [...resolvers],
     extractors: [...extractors],
     hooks: [...hooks],

@@ -10,6 +10,7 @@ Add a config to limit discovery to Markdown files:
 // write-once.config.ts
 export default {
   include: ["**/*.md"],
+  respectGitignore: true,
 };
 ```
 

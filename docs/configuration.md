@@ -15,6 +15,7 @@ export default {
   root: ".",
   include: ["**/*.md"],
   exclude: ["generated/**"],
+  respectGitignore: true,
 };
 ```
 
@@ -23,6 +24,7 @@ export default {
 - Patterns use Git-ignore-style matching through `ignore`. Use positive patterns; leading `!` negation patterns are rejected to keep include/exclude precedence explicit.
 - If `include` is omitted, the default is `**/*`.
 - If `exclude` is omitted, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable those defaults.
+- `respectGitignore` defaults to `true` and applies root and nested `.gitignore` rules during discovery. Set it to `false` to ignore `.gitignore` files; `include` and `exclude` still apply.
 - `resolvers`, `extractors`, and `hooks` are programmatic extension points. Function-valued extensions require an executable config such as TypeScript or JavaScript; JSON/YAML/TOML cannot contain functions.
 
 ## Security
