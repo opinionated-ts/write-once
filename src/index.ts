@@ -1,3 +1,4 @@
+export { rangeExtractor } from "./extractors/range-extractor.js";
 export { namedFragmentExtractor } from "./extractors/named-fragment-extractor.js";
 export { wholeFileExtractor } from "./extractors/whole-file-extractor.js";
 export { localSourceResolver } from "./resolvers/local-source-resolver.js";
