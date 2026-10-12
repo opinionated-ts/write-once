@@ -1,3 +1,5 @@
+export { scanMarkers } from "./marker-scanner.js";
+export type { MarkerScanResult, ScanMarkersOptions } from "./marker-scanner.js";
 export { parseMarkerLine } from "./marker-parser.js";
 export type { ParseMarkerLineOptions } from "./marker-parser.js";
 
