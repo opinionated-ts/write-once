@@ -5,6 +5,8 @@ import type { ContentExtractor, GenerationHook, ResourceResolver } from "./types
 
 import { ConfigValidationError } from "./errors/config-validation-error.js";
 
+export const DEFAULT_EXCLUDE_PATTERNS = ["**/.git/**", "**/node_modules/**"] as const;
+
 export interface WriteOnceConfig {
   root?: string;
   include?: readonly string[];
@@ -94,7 +96,7 @@ export function validateConfig(
   if (!isStringArray(include))
     return invalid('"include" must be an array of non-empty pattern strings.', "include");
 
-  const exclude = value["exclude"] ?? [];
+  const exclude = value["exclude"] ?? DEFAULT_EXCLUDE_PATTERNS;
   if (!isStringArray(exclude))
     return invalid('"exclude" must be an array of non-empty pattern strings.', "exclude");
 

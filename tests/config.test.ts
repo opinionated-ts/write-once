@@ -47,7 +47,7 @@ describe("validateConfig", () => {
     if (isSuccess(result)) {
       expect(result.value.root).toBe("/repo");
       expect(result.value.include).toEqual(["**/*"]);
-      expect(result.value.exclude).toEqual([]);
+      expect(result.value.exclude).toEqual(["**/.git/**", "**/node_modules/**"]);
     }
   });
 

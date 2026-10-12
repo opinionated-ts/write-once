@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration is optional. Without a config file, write-once uses the current working directory as its project root, includes `**/*`, and applies no exclusions.
+Configuration is optional. Without a config file, write-once uses the current working directory as its project root, includes `**/*`, and excludes Git metadata and dependency directories (`**/.git/**` and `**/node_modules/**`).
 
 Supported filenames include `write-once.config.ts`, `write-once.config.js`, `write-once.config.json`, `write-once.config.yaml`, and `write-once.config.yml`. c12 also supports its other documented config extensions.
 
@@ -15,7 +15,7 @@ export default {
 ```
 
 - `root` is resolved relative to the CLI working directory unless it is absolute.
-- `include` and `exclude` select destination files; exclusions take precedence.
+- `include` and `exclude` select destination files; exclusions take precedence. By default, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable these defaults.
 - `resolvers`, `extractors`, and `hooks` accept programmatic extensions.
 - Only one config file is loaded; config files are not silently merged.
 

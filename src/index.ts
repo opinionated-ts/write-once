@@ -1,6 +1,9 @@
+export { discoverDestinationFiles } from "./discovery.js";
+export type { FileDiscoveryResult } from "./discovery.js";
 export { loadWriteOnceConfig } from "./config-loader.js";
 export type { LoadedWriteOnceConfig, LoadWriteOnceConfigOptions } from "./config-loader.js";
 export { validateConfig } from "./config.js";
+export { DEFAULT_EXCLUDE_PATTERNS } from "./config.js";
 export type { NormalizedWriteOnceConfig, WriteOnceConfig } from "./config.js";
 export { rangeExtractor } from "./extractors/range-extractor.js";
 export { namedFragmentExtractor } from "./extractors/named-fragment-extractor.js";
