@@ -1,3 +1,6 @@
+export { parseMarkerLine } from "./marker-parser.js";
+export type { ParseMarkerLineOptions } from "./marker-parser.js";
+
 export type {
   ContentExtractor,
   Diagnostic,
