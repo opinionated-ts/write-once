@@ -1,3 +1,5 @@
+export { writeDestinationPlans } from "./safe-write.js";
+export type { SafeWriteResult } from "./safe-write.js";
 export { planDestinationFile } from "./generation-plan.js";
 export type {
   DestinationPlan,
