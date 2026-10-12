@@ -1,3 +1,9 @@
+export { planDestinationFile } from "./generation-plan.js";
+export type {
+  DestinationPlan,
+  PlanDestinationOptions,
+  PlannedReplacement,
+} from "./generation-plan.js";
 export { discoverDestinationFiles } from "./discovery.js";
 export type { FileDiscoveryResult } from "./discovery.js";
 export { loadWriteOnceConfig } from "./config-loader.js";
