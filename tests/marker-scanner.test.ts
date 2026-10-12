@@ -115,15 +115,15 @@ describe("scanMarkers", () => {
     ).toEqual(["first line\nsecond line\n", "lowercase declaration\n"]);
   });
 
-  it.each([
-    ["/fragment", "no matching opening"],
-    ['fragment source="./a"', "no matching closing"],
-  ])("rejects malformed structures: %s", (text, message) => {
-    const result = scanMarkers(text);
+  it.each([['fragment source="./a"', "no matching closing"]])(
+    "rejects malformed structures: %s",
+    (text, message) => {
+      const result = scanMarkers(text);
 
-    expect(isFailure(result)).toBe(true);
-    if (isFailure(result)) expect(result.error.message).toContain(message);
-  });
+      expect(isFailure(result)).toBe(true);
+      if (isFailure(result)) expect(result.error.message).toContain(message);
+    },
+  );
 
   it("preserves unrelated text and supports markers at EOF without a newline", () => {
     const text = [
@@ -144,6 +144,24 @@ describe("scanMarkers", () => {
     expect(text.slice(block!.span.start, block!.span.end)).toBe(
       'prefix <!-- fragment source="./source.md" --> suffix\ngenerated\nprefix <!-- /fragment --> suffix\n',
     );
+  });
+
+  it("ignores marker words without valid opening attributes and unmatched closing tokens", () => {
+    const text = [
+      "The word fragment appears in documentation.",
+      'fragment other="./source.md"',
+      'fragment range="1:1-2:1"',
+      "/fragment",
+      '/fragment source="./source.md"',
+      'fragmentary source="./source.md"',
+    ].join("\n");
+
+    const result = scanMarkers(text);
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value).toEqual({ blocks: [], declarations: [] });
+    }
   });
 
   it("returns an empty scan for text without marker lines", () => {

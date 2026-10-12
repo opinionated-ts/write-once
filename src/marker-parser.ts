@@ -58,7 +58,12 @@ function findMarker(line: string) {
 
     if (line.startsWith("fragment", index)) {
       const end = index + 8;
-      if (previous !== "/" && !isWord(previous) && !isWord(line[end])) {
+      if (
+        previous !== "/" &&
+        !isWord(previous) &&
+        /\s/.test(line[end] ?? "") &&
+        /(?:^|\s)(?:source|name)\s*=\s*"[^"]*"/.test(line.slice(end))
+      ) {
         found.push({ kind: "open", start: index, end });
         firstMarkerEnd = end;
         index = end - 1;
@@ -204,6 +209,12 @@ export function parseMarkerLine(lineText: string, options: ParseMarkerLineOption
   }
 
   const parsed = parseAttributes(lineText, marker.end);
+
+  // A closing marker is only the bare /fragment token. Attribute-like text
+  // after it means this line is ordinary content, not a malformed marker.
+  if (marker.kind === "close" && (parsed.attributes.length > 0 || parsed.error !== undefined)) {
+    return ok(undefined);
+  }
 
   if (parsed.error) {
     return makeSyntaxError(parsed.error, {

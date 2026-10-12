@@ -52,7 +52,7 @@ describe("generation plan edge cases", () => {
     const destination = join(root, "README.md");
     const result = await planDestinationFile({
       destination,
-      text: ["first line", "  /fragment"].join("\n"),
+      text: ["first line", '  fragment source="./source.md"'].join("\n"),
       config,
     });
 

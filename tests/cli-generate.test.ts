@@ -57,7 +57,7 @@ describe("runGenerate", () => {
     const invalid = join(cwd, "b.md");
     await writeFile(join(cwd, "source.md"), "new", "utf8");
     await writeFile(valid, 'fragment source="./source.md"\nold\n/fragment', "utf8");
-    await writeFile(invalid, "/fragment", "utf8");
+    await writeFile(invalid, 'fragment source="./source.md"\nmissing closing marker', "utf8");
 
     const result = await runGenerate({ cwd });
 

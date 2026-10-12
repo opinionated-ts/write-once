@@ -28,12 +28,20 @@ describe("parseMarkerLine", () => {
 
     expect(isSuccess(declaration)).toBe(true);
     expect(isSuccess(closing)).toBe(true);
-    expect(isFailure(invalidClosing)).toBe(true);
-    if (!isSuccess(declaration) || !isSuccess(closing)) return;
+    expect(isSuccess(invalidClosing)).toBe(true);
+    if (!isSuccess(declaration) || !isSuccess(closing) || !isSuccess(invalidClosing)) return;
+    expect(invalidClosing.value).toBeUndefined();
 
     expect(declaration.value?.attributes).toEqual({ name: "intro" });
     expect(closing.value?.kind).toBe("close");
     expect(closing.value?.attributes).toEqual({});
+  });
+
+  it("ignores closing tokens with attributes because only bare /fragment closes", () => {
+    const result = parseMarkerLine('/fragment source="./source.md"');
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) expect(result.value).toBeUndefined();
   });
 
   it("parses a source range suffix from the right, preserving drive letters", () => {
@@ -63,14 +71,26 @@ describe("parseMarkerLine", () => {
   it("rejects duplicate recognized attributes and malformed quoting", () => {
     const duplicate = parseMarkerLine('fragment source="./a" source="./b"');
     const malformed = parseMarkerLine('fragment name="unfinished');
+    const wordOnly = parseMarkerLine("The word fragment appears here");
+    const rangeOnly = parseMarkerLine('fragment range="1:1-2:1"');
 
     expect(isFailure(duplicate)).toBe(true);
-    expect(isFailure(malformed)).toBe(true);
-    if (!isFailure(duplicate) || !isFailure(malformed)) return;
+    expect(isSuccess(malformed)).toBe(true);
+    expect(isSuccess(wordOnly)).toBe(true);
+    expect(isSuccess(rangeOnly)).toBe(true);
+    if (
+      !isFailure(duplicate) ||
+      !isSuccess(malformed) ||
+      !isSuccess(wordOnly) ||
+      !isSuccess(rangeOnly)
+    )
+      return;
 
     expect(duplicate.error.code).toBe("MARKER_SYNTAX_ERROR");
     expect(duplicate.error.context?.public).toMatchObject({ attribute: "source" });
-    expect(malformed.error.message).toContain("Unterminated quoted value");
+    expect(malformed.value).toBeUndefined();
+    expect(wordOnly.value).toBeUndefined();
+    expect(rangeOnly.value).toBeUndefined();
   });
 
   it("rejects incompatible selectors and invalid ranges", () => {
@@ -98,16 +118,16 @@ describe("parseMarkerLine", () => {
     const missingSource = parseMarkerLine('fragment range="1:1-2:1"');
 
     expect(isFailure(malformed)).toBe(true);
-    expect(isFailure(missingSource)).toBe(true);
-    if (!isFailure(malformed) || !isFailure(missingSource)) return;
+    expect(isSuccess(missingSource)).toBe(true);
+    if (!isFailure(malformed) || !isSuccess(missingSource)) return;
 
+    expect(missingSource.value).toBeUndefined();
     expect(malformed.error.context?.public).toMatchObject({
       line: 2,
       column: 23,
       offset: 42,
       attribute: "range",
     });
-    expect(missingSource.error.message).toContain('requires a "source"');
   });
 
   it("returns undefined when a line contains no marker", () => {

@@ -194,13 +194,7 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
     }
 
     const opening = stack.pop();
-    if (opening === undefined) {
-      return structureError(
-        "Closing fragment marker has no matching opening marker.",
-        resource,
-        token,
-      );
-    }
+    if (opening === undefined) continue;
 
     const openingLine = lines.find((candidate) => candidate.start === opening.token.lineSpan.start);
     const closingLine = line;
