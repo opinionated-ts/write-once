@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { chmod, open, readFile, rename, rm, stat } from "node:fs/promises";
+import { chmod, open, readFile, rename as renameFile, rm, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
 import type { DestinationPlan } from "./generation-plan.js";
@@ -38,9 +38,14 @@ async function cleanupTemporaryFiles(files: readonly StagedFile[]): Promise<void
   );
 }
 
-/** Atomically replace changed destination files using temporary sibling files. */
-export async function writeDestinationPlans(
+interface SafeWriteOperations {
+  rename: typeof renameFile;
+}
+
+/** Internal test seam for deterministic rename-failure coverage. */
+export async function writeDestinationPlansWithOperations(
   plans: readonly DestinationPlan[],
+  operations: SafeWriteOperations,
 ): Promise<SafeWriteResult> {
   const written: string[] = [];
   const unchanged: string[] = [];
@@ -121,7 +126,7 @@ export async function writeDestinationPlans(
   for (let index = 0; index < staged.length; index += 1) {
     const file = staged[index]!;
     try {
-      await rename(file.temporary, file.destination);
+      await operations.rename(file.temporary, file.destination);
       written.push(file.destination);
     } catch (cause) {
       await cleanupTemporaryFiles(staged.slice(index));
@@ -138,4 +143,9 @@ export async function writeDestinationPlans(
   // oxlint-enable no-await-in-loop
 
   return { written, unchanged, diagnostics };
+}
+
+/** Atomically replace changed destination files using temporary sibling files. */
+export function writeDestinationPlans(plans: readonly DestinationPlan[]): Promise<SafeWriteResult> {
+  return writeDestinationPlansWithOperations(plans, { rename: renameFile });
 }
