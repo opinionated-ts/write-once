@@ -80,8 +80,39 @@ describe("scanMarkers", () => {
     expect(isFailure(result)).toBe(true);
     if (isFailure(result)) {
       expect(result.error.message).toContain('Duplicate named declaration "intro"');
-      expect(result.error.context?.public).toMatchObject({ name: "intro", previousOffset: 0 });
+      expect(result.error.context?.public).toMatchObject({
+        name: "intro",
+        previousOffset: 0,
+        previousLine: 1,
+        previousColumn: 1,
+        line: 3,
+        column: 1,
+      });
     }
+  });
+
+  it("treats declaration names as case-sensitive and preserves exact content spans", () => {
+    const text = [
+      'fragment name="Intro"',
+      "first line",
+      "second line",
+      "/fragment",
+      'fragment name="intro"',
+      "lowercase declaration",
+      "/fragment",
+    ].join("\n");
+
+    const result = scanMarkers(text);
+
+    expect(isSuccess(result)).toBe(true);
+    if (!isSuccess(result)) return;
+
+    expect(result.value.declarations.map(({ name }) => name)).toEqual(["Intro", "intro"]);
+    expect(
+      result.value.declarations.map(({ contentSpan }) =>
+        text.slice(contentSpan.start, contentSpan.end),
+      ),
+    ).toEqual(["first line\nsecond line\n", "lowercase declaration\n"]);
   });
 
   it.each([

@@ -171,6 +171,10 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
           return structureError('Duplicate named declaration "' + name + '".', resource, token, {
             name,
             previousOffset: previous.span.start,
+            previousLine: previous.location.start.line,
+            previousColumn: previous.location.start.column,
+            line: token.location.start.line,
+            column: token.location.start.column,
           });
         }
         declarationNames.set(name, token);
