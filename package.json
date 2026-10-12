@@ -10,14 +10,12 @@
   },
   "files": [
     "dist",
-    "dist/schema.mjs",
-    "dist/schema.d.mts",
+    "write-once.schema.json",
     "docs"
   ],
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
-    "./schema": "./dist/schema.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -37,9 +35,10 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "audit": "bun audit fix --ignore GHSA-vfj7-8cjw-p6xm",
-    "build": "tsdown",
+    "build": "tsdown && bun run generate:schema",
     "build:watch": "tsdown --watch",
-    "start": "bun run build && bun ./dist/cli.mjs"
+    "start": "bun run build && bun ./dist/cli.mjs",
+    "generate:schema": "bun scripts/generate-schema.ts"
   },
   "dependencies": {
     "@opinionated-ts/error-factory": "^1.0.1",

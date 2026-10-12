@@ -34,15 +34,21 @@ export default {
 } satisfies UserConfig;
 ```
 
-The Zod schema for JSON-compatible options is available from the root export or the `/schema` subpath:
+## JSON configuration
 
-```ts
-import { writeOnceConfigSchema } from "@opinionated-ts/write-once/schema";
+The package publishes a JSON Schema generated from the Zod configuration schema. Reference it from a JSON configuration file to enable editor validation and autocomplete:
 
-const config = writeOnceConfigSchema.parse(JSON.parse(source));
+```json
+{
+  "$schema": "https://unpkg.com/@opinionated-ts/write-once@0.1.0/write-once.schema.json",
+  "root": ".",
+  "include": ["**/*.md"],
+  "exclude": ["generated/**"],
+  "respectGitignore": true
+}
 ```
 
-The schema validates `root`, `include`, `exclude`, and `respectGitignore`. Programmatic extensions (`resolvers`, `extractors`, and `hooks`) require executable TypeScript or JavaScript config files.
+The generated schema validates `root`, `include`, `exclude`, and `respectGitignore`. Programmatic extensions (`resolvers`, `extractors`, and `hooks`) require executable TypeScript or JavaScript config files. The same Zod schema remains available at runtime from the package root as `writeOnceConfigSchema`.
 
 ## Options
 

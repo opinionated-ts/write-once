@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "root": {
+      "type": "string"
+    },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exclude": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "respectGitignore": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": {},
+  "$id": "https://unpkg.com/@opinionated-ts/write-once@0.1.0/write-once.schema.json",
+  "title": "write-once JSON configuration"
+}
