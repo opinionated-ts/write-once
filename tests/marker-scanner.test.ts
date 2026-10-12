@@ -1,7 +1,7 @@
 import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { describe, expect, it } from "vitest";
 
-import { scanMarkers } from "@/index";
+import { scanMarkers } from "@/marker-scanner";
 
 describe("scanMarkers", () => {
   it("pairs generated blocks and preserves complete CRLF delimiter spans", () => {

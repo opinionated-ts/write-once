@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Diagnostic } from "@/index";
+import type { Diagnostic } from "@/types";
 
 import { formatDiagnostic } from "@/diagnostics";
 

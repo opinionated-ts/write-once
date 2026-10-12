@@ -1,7 +1,7 @@
 import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { describe, expect, it } from "vitest";
 
-import type { ContentExtractor, GenerationHook, ResourceResolver } from "@/index";
+import type { ContentExtractor, GenerationHook, ResourceResolver } from "@/types";
 
 import { validateConfig } from "@/config";
 

@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { GenerationHook, NormalizedWriteOnceConfig } from "@/index";
+import type { NormalizedWriteOnceConfig } from "@/config";
+import type { GenerationHook } from "@/types";
 
 import { validateConfig } from "@/config";
 import { planDestinationFile } from "@/generation-plan";

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedResource, SourceSelector } from "@/index";
+import type { ResolvedResource, SourceSelector } from "@/types";
 
-import { rangeExtractor } from "@/index";
+import { rangeExtractor } from "@/extractors/range-extractor";
 
 const context = { cwd: "/project" };
 const range = (

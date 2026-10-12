@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedResource, SourceSelector } from "@/index";
+import type { ResolvedResource, SourceSelector } from "@/types";
 
-import { wholeFileExtractor } from "@/index";
+import { wholeFileExtractor } from "@/extractors/whole-file-extractor";
 
 const whole: SourceSelector = { kind: "whole" };
 const context = { cwd: "/project" };

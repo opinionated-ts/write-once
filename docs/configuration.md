@@ -1,10 +1,14 @@
 # Configuration
 
-Configuration is optional. Without a config file, write-once uses the current working directory as its project root, includes `**/*`, and excludes Git metadata and dependency directories (`**/.git/**` and `**/node_modules/**`).
+Configuration is optional. Without a config file, write-once uses the CLI working directory as its project root, includes `**/*`, and excludes Git metadata and dependency directories with `**/.git/**` and `**/node_modules/**`.
 
-Supported filenames include `write-once.config.ts`, `write-once.config.js`, `write-once.config.json`, `write-once.config.yaml`, and `write-once.config.yml`. c12 also supports its other documented config extensions.
+## File discovery
 
-Place a config file in the project root or in `.config/`. Automatic discovery fails if more than one supported `write-once.config.*` file is found. Select one explicitly with `--config <path>`.
+c12 supports these config extensions: `.js`, `.ts`, `.mjs`, `.cjs`, `.mts`, `.cts`, `.json`, `.jsonc`, `.json5`, `.yaml`, `.yml`, and `.toml`. Use a filename such as `write-once.config.ts` in the project root or `.config/` directory.
+
+Automatic discovery fails if more than one supported `write-once.config.*` file is found. Select one explicitly with `write-once generate --config <path>`; config files are never silently merged. The path is resolved relative to the CLI working directory.
+
+## Options
 
 ```ts
 export default {
@@ -14,9 +18,13 @@ export default {
 };
 ```
 
-- `root` is resolved relative to the CLI working directory unless it is absolute.
-- `include` and `exclude` select destination files; exclusions take precedence. By default, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable these defaults.
-- `resolvers`, `extractors`, and `hooks` accept programmatic extensions.
-- Only one config file is loaded; config files are not silently merged.
+- `root` is resolved relative to the CLI working directory unless it is absolute. Source references are resolved from this effective root.
+- `include` selects destination paths relative to `root`; `exclude` filters those matches afterward, so exclusions take precedence.
+- Patterns use Git-ignore-style matching through `ignore`. Use positive patterns; leading `!` negation patterns are rejected to keep include/exclude precedence explicit.
+- If `include` is omitted, the default is `**/*`.
+- If `exclude` is omitted, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable those defaults.
+- `resolvers`, `extractors`, and `hooks` are programmatic extension points. Function-valued extensions require an executable config such as TypeScript or JavaScript; JSON/YAML/TOML cannot contain functions.
 
-**Security:** TypeScript and JavaScript config files execute user code when loaded. Only load executable config files you trust.
+## Security
+
+TypeScript and JavaScript config files execute user code when loaded. Only load executable config files you trust.

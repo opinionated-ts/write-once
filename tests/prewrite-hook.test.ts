@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { GenerationHook, HookContext } from "@/index";
+import type { GenerationHook, HookContext } from "@/types";
 
 import { validateConfig } from "@/config";
 import { planDestinationFile } from "@/generation-plan";

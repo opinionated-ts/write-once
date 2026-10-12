@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedResource, SourceSelector } from "@/index";
+import type { ResolvedResource, SourceSelector } from "@/types";
 
-import { namedFragmentExtractor } from "@/index";
+import { namedFragmentExtractor } from "@/extractors/named-fragment-extractor";
 
 const context = { cwd: "/project" };
 const named = (name: string): SourceSelector => ({ kind: "named", name });

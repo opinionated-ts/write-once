@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { localSourceResolver } from "@/index";
+import { localSourceResolver } from "@/resolvers/local-source-resolver";
 
 const directories: string[] = [];
 

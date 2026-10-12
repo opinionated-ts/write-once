@@ -1,7 +1,7 @@
 import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { describe, expect, it } from "vitest";
 
-import { parseMarkerLine } from "@/index";
+import { parseMarkerLine } from "@/marker-parser";
 
 describe("parseMarkerLine", () => {
   it("ignores host-language wrappers and unrelated attributes", () => {
