@@ -8,6 +8,42 @@ c12 supports these config extensions: `.js`, `.ts`, `.mjs`, `.cjs`, `.mts`, `.ct
 
 Automatic discovery fails if more than one supported `write-once.config.*` file is found. Select one explicitly with `write-once generate --config <path>`; config files are never silently merged. The path is resolved relative to the CLI working directory.
 
+## TypeScript configuration
+
+Use `defineConfig` for editor autocomplete and type checking:
+
+```ts
+import { defineConfig } from "@opinionated-ts/write-once";
+
+export default defineConfig({
+  root: ".",
+  include: ["**/*.md"],
+  exclude: ["generated/**"],
+  respectGitignore: true,
+});
+```
+
+The helper is optional. Use `satisfies UserConfig` when you prefer a plain object:
+
+```ts
+import type { UserConfig } from "@opinionated-ts/write-once";
+
+export default {
+  root: ".",
+  include: ["**/*.md"],
+} satisfies UserConfig;
+```
+
+The Zod schema for JSON-compatible options is available from the root export or the `/schema` subpath:
+
+```ts
+import { writeOnceConfigSchema } from "@opinionated-ts/write-once/schema";
+
+const config = writeOnceConfigSchema.parse(JSON.parse(source));
+```
+
+The schema validates `root`, `include`, `exclude`, and `respectGitignore`. Programmatic extensions (`resolvers`, `extractors`, and `hooks`) require executable TypeScript or JavaScript config files.
+
 ## Options
 
 ```ts

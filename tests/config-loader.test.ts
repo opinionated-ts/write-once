@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { UserConfig } from "@/config";
+
 import { loadWriteOnceConfig } from "@/config-loader";
 
 const directories: string[] = [];
@@ -86,5 +88,17 @@ describe("loadWriteOnceConfig", () => {
     const malformed = await loadWriteOnceConfig({ cwd, configPath: "bad.json" });
     expect(isFailure(malformed)).toBe(true);
     if (isFailure(malformed)) expect(malformed.error.code).toBe("CONFIG_LOAD_ERROR");
+  });
+});
+
+describe("UserConfig typing", () => {
+  it("supports direct satisfies typing without defineConfig", () => {
+    const config = {
+      root: "docs",
+      include: ["**/*.md"],
+      respectGitignore: false,
+    } satisfies UserConfig;
+
+    expect(config.root).toBe("docs");
   });
 });

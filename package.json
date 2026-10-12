@@ -10,11 +10,14 @@
   },
   "files": [
     "dist",
+    "dist/schema.mjs",
+    "dist/schema.d.mts",
     "docs"
   ],
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
+    "./schema": "./dist/schema.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -44,7 +47,8 @@
     "c12": "^3.3.3",
     "citty": "^0.2.2",
     "ignore": "^7.0.12",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@opinionated-ts/config": "^1.9.1",

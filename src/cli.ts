@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { defineCommand, runMain } from "citty";
 
 import { runGenerate } from "./cli/generate.js";

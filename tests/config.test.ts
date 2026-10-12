@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ContentExtractor, GenerationHook, ResourceResolver } from "@/types";
 
-import { validateConfig } from "@/config";
+import { defineConfig, validateConfig, writeOnceConfigSchema } from "@/config";
 
 const resolver: ResourceResolver = {
   id: "local",
@@ -88,5 +88,30 @@ describe("validateConfig", () => {
 
     expect(isFailure(result)).toBe(true);
     if (isFailure(result)) expect(result.error.message).toContain(message);
+  });
+});
+
+describe("public config API", () => {
+  it("provides a defineConfig identity helper", () => {
+    const config = defineConfig({ root: "docs", respectGitignore: false });
+
+    expect(config).toEqual({ root: "docs", respectGitignore: false });
+  });
+
+  it("exposes a Zod schema for JSON-compatible configuration", () => {
+    expect(
+      writeOnceConfigSchema.parse({
+        root: "docs",
+        include: ["**/*.md"],
+        customMetadata: { owner: "docs-team" },
+      }),
+    ).toEqual({
+      root: "docs",
+      include: ["**/*.md"],
+      customMetadata: { owner: "docs-team" },
+    });
+
+    expect(writeOnceConfigSchema.safeParse({ include: [""] }).success).toBe(false);
+    expect(writeOnceConfigSchema.safeParse({ respectGitignore: "false" }).success).toBe(false);
   });
 });

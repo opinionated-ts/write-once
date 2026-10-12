@@ -1,7 +1,12 @@
 export { loadWriteOnceConfig } from "./config-loader.js";
 export type { LoadedWriteOnceConfig, LoadWriteOnceConfigOptions } from "./config-loader.js";
-export { validateConfig } from "./config.js";
-export type { NormalizedWriteOnceConfig, WriteOnceConfig } from "./config.js";
+export { defineConfig, validateConfig, writeOnceConfigSchema } from "./config.js";
+export type {
+  NormalizedWriteOnceConfig,
+  UserConfig,
+  WriteOnceConfig,
+  WriteOnceJsonConfig,
+} from "./config.js";
 
 export type {
   ContentExtractor,
