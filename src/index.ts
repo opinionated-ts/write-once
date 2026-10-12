@@ -1,3 +1,5 @@
+export { validateConfig } from "./config.js";
+export type { NormalizedWriteOnceConfig, WriteOnceConfig } from "./config.js";
 export { rangeExtractor } from "./extractors/range-extractor.js";
 export { namedFragmentExtractor } from "./extractors/named-fragment-extractor.js";
 export { wholeFileExtractor } from "./extractors/whole-file-extractor.js";
