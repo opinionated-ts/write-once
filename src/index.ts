@@ -1,3 +1,5 @@
+export { loadWriteOnceConfig } from "./config-loader.js";
+export type { LoadedWriteOnceConfig, LoadWriteOnceConfigOptions } from "./config-loader.js";
 export { validateConfig } from "./config.js";
 export type { NormalizedWriteOnceConfig, WriteOnceConfig } from "./config.js";
 export { rangeExtractor } from "./extractors/range-extractor.js";

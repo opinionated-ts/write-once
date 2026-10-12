@@ -35,7 +35,8 @@
   },
   "dependencies": {
     "@opinionated-ts/error-factory": "^1.0.1",
-    "@opinionated-ts/result": "^1.0.0"
+    "@opinionated-ts/result": "^1.0.0",
+    "c12": "^3.3.3"
   },
   "devDependencies": {
     "@opinionated-ts/config": "^1.9.1",
