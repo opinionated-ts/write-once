@@ -1,0 +1,227 @@
+/**
+ * A half-open span in a JavaScript string, measured in UTF-16 code units.
+ *
+ * The start offset is inclusive and the end offset is exclusive.
+ */
+export interface TextSpan {
+  start: number;
+  end: number;
+}
+
+/**
+ * A human-facing text coordinate.
+ *
+ * Lines and columns are 1-based. Columns count UTF-16 code units.
+ */
+export interface TextCoordinate {
+  line: number;
+  column: number;
+}
+
+/**
+ * Identifies a location within a resource.
+ *
+ * The resource identifier is intentionally not restricted to a local file path.
+ */
+export interface SourceLocation {
+  resource: string;
+  start: TextCoordinate;
+  end: TextCoordinate;
+}
+
+/**
+ * The semantic attributes understood by the marker parser.
+ *
+ * Wrapper syntax and unrelated attributes are deliberately excluded.
+ */
+export interface MarkerAttributes {
+  source?: string;
+  name?: string;
+  range?: string;
+}
+
+/**
+ * The source-text offsets and location of a marker token.
+ *
+ * `span` covers the marker token; `lineSpan` covers its complete delimiter
+ * line, including its line ending when present.
+ */
+export interface MarkerToken {
+  kind: "open" | "close";
+  raw: string;
+  attributes: MarkerAttributes;
+  span: TextSpan;
+  lineSpan: TextSpan;
+  location: SourceLocation;
+}
+
+/**
+ * A paired marker block. Delimiter lines are preserved by default; only
+ * `bodySpan` is replaced during normal generation.
+ */
+export interface MarkerBlock {
+  opening: MarkerToken;
+  closing: MarkerToken;
+  span: TextSpan;
+  bodySpan: TextSpan;
+}
+
+/** A line-and-column range in a resource. The end coordinate is exclusive. */
+export interface TextRange {
+  start: TextCoordinate;
+  end: TextCoordinate;
+}
+
+/** Selects the complete source resource. */
+export interface WholeSourceSelector {
+  kind: "whole";
+}
+
+/** Selects a named declaration from the resolved source resource. */
+export interface NamedFragmentSelector {
+  kind: "named";
+  name: string;
+}
+
+/** Selects a range from the resolved source resource. */
+export interface RangeSelector {
+  kind: "range";
+  range: TextRange;
+}
+
+/** The built-in source-selection modes supported by v1. */
+export type SourceSelector = WholeSourceSelector | NamedFragmentSelector | RangeSelector;
+
+/** A manually maintained, read-only named declaration. */
+export interface NamedDeclaration {
+  name: string;
+  marker: MarkerBlock;
+  contentSpan: TextSpan;
+  location: SourceLocation;
+}
+
+/** A generated destination whose content comes from a resolved source. */
+export interface GeneratedDestination {
+  source: string;
+  selector: SourceSelector;
+  marker: MarkerBlock;
+  location: SourceLocation;
+}
+
+/**
+ * Optional capabilities contributed by a plugin.
+ *
+ * Capability types are generic so resolver, extractor, and hook contracts can
+ * evolve independently. A plugin may contribute any subset of these arrays.
+ */
+export interface PluginContribution<
+  Resolver = ResourceResolver,
+  Extractor = ContentExtractor,
+  Hook = unknown,
+> {
+  name?: string;
+  resolvers?: readonly Resolver[];
+  extractors?: readonly Extractor[];
+  hooks?: readonly Hook[];
+}
+
+/**
+ * A resource resolved for extraction.
+ *
+ * `location` and `id` are opaque identifiers to the core. A resolver may
+ * supply text directly or provide metadata required by a compatible extractor.
+ */
+export type ResolvedResource = {
+  id: string;
+  location: string;
+} & (
+  | { text: string; metadata?: Readonly<Record<string, unknown>> }
+  | { text?: string; metadata: Readonly<Record<string, unknown>> }
+);
+
+/** Shared information available while resolving or extracting a resource. */
+export interface ResourceContext {
+  cwd: string;
+  destination?: string;
+  metadata?: Readonly<Record<string, unknown>>;
+}
+
+/** The selected text and its location within the source resource, when known. */
+export interface ExtractedContent {
+  text: string;
+  location?: SourceLocation;
+  metadata?: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Finds or acquires a resource for a source reference.
+ *
+ * Resolvers do not choose which content is extracted. If multiple resolvers
+ * match, the pipeline can order them by priority and then registration order.
+ */
+export interface ResourceResolver {
+  id: string;
+  priority?: number;
+  canResolve(source: string, context: ResourceContext): boolean;
+  resolve(source: string, context: ResourceContext): ResolvedResource | Promise<ResolvedResource>;
+}
+
+/**
+ * Selects content from an already resolved resource.
+ *
+ * Extractors do not acquire resources or write destination files. If multiple
+ * extractors match, the pipeline can order them by priority and then
+ * registration order.
+ */
+export interface ContentExtractor {
+  id: string;
+  priority?: number;
+  canExtract(
+    resource: ResolvedResource,
+    selector: SourceSelector,
+    context: ResourceContext,
+  ): boolean;
+  extract(
+    resource: ResolvedResource,
+    selector: SourceSelector,
+    context: ResourceContext,
+  ): ExtractedContent | Promise<ExtractedContent>;
+}
+
+/** A stage in the generation pipeline. Custom stages remain possible. */
+export type DiagnosticStage =
+  | "config"
+  | "discovery"
+  | "marker"
+  | "resolve"
+  | "extract"
+  | "hook"
+  | "write"
+  | "generate"
+  | (string & {});
+
+/** A structured, actionable issue encountered during processing. */
+export interface Diagnostic {
+  severity: "error" | "warning" | "info";
+  message: string;
+  stage: DiagnosticStage;
+  code?: string;
+  file?: string;
+  markerLocation?: SourceLocation;
+  source?: string;
+  cause?: unknown;
+}
+
+/** Context provided to a hook that customizes generated content. */
+export interface HookContext {
+  stage: string;
+  destination: string;
+  marker: MarkerBlock;
+  content: string;
+  sourceReference?: string;
+  selector?: SourceSelector;
+  source?: ResolvedResource;
+}
+
+/** Default body-only replacement, or explicit replacement of the full block. */
+export type HookOutput = { text: string; fullText?: never } | { fullText: string; text?: never };

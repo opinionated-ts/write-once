@@ -1,8 +1,25 @@
-/**
- * Returns a greeting for the provided name.
- *
- * Replace this example with the package public API.
- */
-export function greet(name: string): string {
-  return `Hello, ${name}!`;
-}
+export type {
+  ContentExtractor,
+  Diagnostic,
+  DiagnosticStage,
+  ExtractedContent,
+  GeneratedDestination,
+  HookContext,
+  HookOutput,
+  MarkerAttributes,
+  MarkerBlock,
+  MarkerToken,
+  NamedDeclaration,
+  NamedFragmentSelector,
+  PluginContribution,
+  RangeSelector,
+  ResolvedResource,
+  ResourceContext,
+  ResourceResolver,
+  SourceLocation,
+  SourceSelector,
+  TextCoordinate,
+  TextRange,
+  TextSpan,
+  WholeSourceSelector,
+} from "./types.js";
