@@ -5,7 +5,7 @@ YAML is a secondary option for projects that only need static settings. It canno
 For editor validation, add a YAML language-server schema comment at the top of write-once.config.yaml:
 
 ```yaml
-# yaml-language-server: $schema=https://unpkg.com/@opinionated-ts/write-once@0.1.0/write-once.schema.json
+# yaml-language-server: $schema=https://unpkg.com/write-once@0.1.0/write-once.schema.json
 root: .
 include:
   - "**/*.md"

@@ -1,4 +1,4 @@
-# @opinionated-ts/write-once
+# write-once
 
 Keep reusable content in one source file and update marked sections in destination files. write-once uses language-agnostic text markers; it does not parse the host language.
 
@@ -41,7 +41,7 @@ Generated introduction.
 Run:
 
 ```sh
-bunx @opinionated-ts/write-once generate
+bunx write-once generate
 ```
 
 By default, only the text between the marker lines is replaced. Unchanged files are not rewritten; writes are atomic per file, not across the whole project.

@@ -9,7 +9,7 @@ const schema = z.toJSONSchema(writeOnceConfigSchema, {
   io: "input",
 });
 
-schema["$id"] = "https://unpkg.com/@opinionated-ts/write-once@0.1.0/write-once.schema.json";
+schema["$id"] = "https://unpkg.com/write-once@0.1.0/write-once.schema.json";
 schema["title"] = "write-once JSON configuration";
 
 await writeFile(resolve("write-once.schema.json"), `${JSON.stringify(schema, null, 2)}\n`);

@@ -15,7 +15,7 @@ TypeScript is the recommended format because it supports the complete configurat
 Use `defineConfig` for editor autocomplete and type checking:
 
 ```ts
-import { defineConfig } from "@opinionated-ts/write-once";
+import { defineConfig } from "write-once";
 
 export default defineConfig({
   root: ".",
@@ -30,7 +30,7 @@ export default defineConfig({
 The helper is optional. Use `satisfies UserConfig` when you prefer a plain object:
 
 ```ts
-import type { UserConfig } from "@opinionated-ts/write-once";
+import type { UserConfig } from "write-once";
 
 export default {
   root: ".",
@@ -43,7 +43,7 @@ export default {
 Configuration files can extend a shared configuration. Paths are resolved by c12 relative to the config file:
 
 ```ts
-import { defineConfig } from "@opinionated-ts/write-once";
+import { defineConfig } from "write-once";
 
 export default defineConfig({
   extends: ["./config/write-once.base.ts"],

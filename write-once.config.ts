@@ -1,4 +1,4 @@
-import { defineConfig } from "@opinionated-ts/write-once";
+import { defineConfig } from "write-once";
 
 export default defineConfig({
   include: ["docs/**"],

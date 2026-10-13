@@ -1,17 +1,32 @@
 {
-  "name": "@opinionated-ts/write-once",
-  "version": "0.1.0",
+  "name": "write-once",
+  "homepage": "https://github.com/opinionated-ts/write-once#readme",
+  "bugs": {
+    "url": "https://github.com/opinionated-ts/write-once/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Opinionated TS",
+    "url": "https://github.com/opinionated-ts"
+  },
+  "contributors": [
+    {
+      "name": "Daniel A. Hernández Ochoa",
+      "url": "https://github.com/DanhezCode"
+    }
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/opinionated-ts/write-once.git"
   },
   "bin": {
-    "write-once": "./dist/cli.mjs"
+    "write-once": "dist/cli.mjs"
   },
   "files": [
     "dist",
     "write-once.schema.json",
-    "docs"
+    "docs",
+    "README.md"
   ],
   "type": "module",
   "exports": {
@@ -39,7 +54,8 @@
     "build": "tsdown && bun run generate:schema",
     "build:watch": "tsdown --watch",
     "start": "bun run build && bun ./dist/cli.mjs",
-    "generate:schema": "bun scripts/generate-schema.ts"
+    "generate:schema": "bun scripts/generate-schema.ts",
+    "write-once": "bun dist/cli.mjs"
   },
   "dependencies": {
     "@opinionated-ts/error-factory": "^1.0.1",

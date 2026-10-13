@@ -6,7 +6,7 @@ Add the published JSON Schema reference to enable editor validation and autocomp
 
 ```json
 {
-  "$schema": "https://unpkg.com/@opinionated-ts/write-once@0.1.0/write-once.schema.json",
+  "$schema": "https://unpkg.com/write-once@0.1.0/write-once.schema.json",
   "root": ".",
   "include": ["**/*.md"],
   "exclude": ["generated/**"],
