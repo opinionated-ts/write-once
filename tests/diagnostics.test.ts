@@ -30,6 +30,19 @@ describe("formatDiagnostic", () => {
     expect(output).toContain("source: ./missing.md");
   });
 
+  it("omits source coordinates when only a file is available", () => {
+    const output = stripAnsi(
+      formatDiagnostic({
+        severity: "info",
+        stage: "prepare",
+        message: "Resources prepared.",
+        file: "/project/README.md",
+      }),
+    );
+
+    expect(output).toBe("info[prepare]: Resources prepared.\n  --> /project/README.md");
+  });
+
   it("renders warnings with a warn severity label", () => {
     const output = stripAnsi(
       formatDiagnostic({

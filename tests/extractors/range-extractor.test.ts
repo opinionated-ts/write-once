@@ -65,6 +65,21 @@ describe("rangeExtractor", () => {
     );
   });
 
+  it("handles lone CR line endings and rejects incompatible runtime inputs", () => {
+    expect(rangeExtractor.extract(resource("first\rsecond"), range(2, 1, 2, 7)).text).toBe(
+      "second",
+    );
+    const missingText = { ...resource("content") };
+    Object.defineProperty(missingText, "text", { value: undefined });
+
+    expect(() => rangeExtractor.extract(resource("content"), { kind: "whole" })).toThrow(
+      expect.objectContaining({ message: "The range extractor requires a range selector." }),
+    );
+    expect(() => rangeExtractor.extract(missingText, range(1, 1, 1, 1))).toThrow(
+      expect.objectContaining({ message: expect.stringContaining("does not provide text") }),
+    );
+  });
+
   it("only accepts range selectors and returns source metadata", () => {
     expect(rangeExtractor.canExtract(resource("abc"), range(1, 1, 1, 2), context)).toBe(true);
     expect(rangeExtractor.canExtract(resource("abc"), { kind: "whole" }, context)).toBe(false);

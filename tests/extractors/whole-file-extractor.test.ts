@@ -47,6 +47,27 @@ describe("wholeFileExtractor", () => {
     });
   });
 
+  it("rejects a non-whole selector and runtime resources without text", () => {
+    const resource: ResolvedContent = {
+      root: "/project",
+      path: "source.md",
+      id: "local:source",
+      location: "/project/source.md",
+      text: "content",
+    };
+    const missingText = { ...resource };
+    Object.defineProperty(missingText, "text", { value: undefined });
+
+    expect(() => wholeFileExtractor.extract(resource, { kind: "named", name: "intro" })).toThrow(
+      expect.objectContaining({
+        message: "The whole-file extractor only supports whole-source selectors.",
+      }),
+    );
+    expect(() => wholeFileExtractor.extract(missingText, whole)).toThrow(
+      expect.objectContaining({ message: expect.stringContaining("does not provide text") }),
+    );
+  });
+
   it("only accepts whole-source selectors", () => {
     expect(
       wholeFileExtractor.canExtract(

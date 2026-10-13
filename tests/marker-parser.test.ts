@@ -72,33 +72,48 @@ describe("parseMarkerLine", () => {
     const duplicate = parseMarkerLine('fragment source="./a" source="./b"');
     const malformed = parseMarkerLine('fragment name="unfinished');
     const wordOnly = parseMarkerLine("The word fragment appears here");
+    const bareMarker = parseMarkerLine("fragment");
     const rangeOnly = parseMarkerLine('fragment range="1:1-2:1"');
 
     expect(isFailure(duplicate)).toBe(true);
     expect(isSuccess(malformed)).toBe(true);
     expect(isSuccess(wordOnly)).toBe(true);
-    expect(isSuccess(rangeOnly)).toBe(true);
+    expect(isSuccess(bareMarker)).toBe(true);
+    expect(isFailure(rangeOnly)).toBe(true);
     if (
       !isFailure(duplicate) ||
       !isSuccess(malformed) ||
       !isSuccess(wordOnly) ||
-      !isSuccess(rangeOnly)
+      !isSuccess(bareMarker)
     )
       return;
+    if (isFailure(rangeOnly)) {
+      expect(rangeOnly.error.message).toContain('requires a "source" attribute');
+    }
 
     expect(duplicate.error.code).toBe("MARKER_SYNTAX_ERROR");
     expect(duplicate.error.context?.public).toMatchObject({ attribute: "source" });
     expect(malformed.value).toBeUndefined();
     expect(wordOnly.value).toBeUndefined();
-    expect(rangeOnly.value).toBeUndefined();
+    expect(bareMarker.value).toBeUndefined();
   });
 
   it("rejects incompatible selectors and invalid ranges", () => {
     const combined = parseMarkerLine('fragment source="./a" name="intro" range="1:1-2:1"');
     const invalidRange = parseMarkerLine('fragment source="./a" range="3:1-2:1"');
+    const malformedRange = parseMarkerLine('fragment source="./a" range="not-a-range"');
+    const namedSuffixRange = parseMarkerLine('fragment source="./a:1:1-2:1" name="intro"');
 
     expect(isFailure(combined)).toBe(true);
     expect(isFailure(invalidRange)).toBe(true);
+    expect(isFailure(malformedRange)).toBe(true);
+    expect(isFailure(namedSuffixRange)).toBe(true);
+    if (isFailure(malformedRange))
+      expect(malformedRange.error.message).toContain(
+        "positive, ordered line and column coordinates",
+      );
+    if (isFailure(namedSuffixRange))
+      expect(namedSuffixRange.error.message).toContain("effective range");
   });
 
   it("does not treat marker-like text inside attribute values as another marker", () => {
@@ -118,10 +133,10 @@ describe("parseMarkerLine", () => {
     const missingSource = parseMarkerLine('fragment range="1:1-2:1"');
 
     expect(isFailure(malformed)).toBe(true);
-    expect(isSuccess(missingSource)).toBe(true);
-    if (!isFailure(malformed) || !isSuccess(missingSource)) return;
+    expect(isFailure(missingSource)).toBe(true);
+    if (!isFailure(malformed) || !isFailure(missingSource)) return;
 
-    expect(missingSource.value).toBeUndefined();
+    expect(missingSource.error.message).toContain('requires a "source" attribute');
     expect(malformed.error.context?.public).toMatchObject({
       line: 2,
       column: 23,
@@ -149,6 +164,80 @@ describe("parseMarkerLine", () => {
       expect(duplicateName.error.context?.public).toMatchObject({ attribute: "name" });
     if (isFailure(duplicateRange))
       expect(duplicateRange.error.context?.public).toMatchObject({ attribute: "range" });
+  });
+
+  it("parses single-quoted values and stops at host-language comment terminators", () => {
+    const singleQuoted = parseMarkerLine(`fragment source="./source.md" name='intro' -->`);
+    const blockComment = parseMarkerLine('fragment source="./source.md" */');
+
+    expect(isSuccess(singleQuoted)).toBe(true);
+    expect(isSuccess(blockComment)).toBe(true);
+    if (isSuccess(singleQuoted)) {
+      expect(singleQuoted.value?.attributes).toEqual({ source: "./source.md", name: "intro" });
+    }
+    if (isSuccess(blockComment)) expect(blockComment.value?.attributes.source).toBe("./source.md");
+  });
+
+  it("reports missing attribute values and rejects semantic attributes on closing markers", () => {
+    const missingValue = parseMarkerLine('fragment name="intro" source=');
+    const semanticClosing = parseMarkerLine('/fragment source="./source.md"');
+
+    expect(isFailure(missingValue)).toBe(true);
+    expect(isSuccess(semanticClosing)).toBe(true);
+    if (isFailure(missingValue)) expect(missingValue.error.message).toContain("Missing value");
+    if (isSuccess(semanticClosing)) expect(semanticClosing.value).toBeUndefined();
+  });
+
+  it("rejects conflicting names and ranges, invalid suffix ranges, and suffixes without a path", () => {
+    const selectorConflict = parseMarkerLine('fragment source="./a" name="intro" range="1:1-2:1"');
+    const invalidSuffix = parseMarkerLine('fragment source="./a:3:1-2:1"');
+    const emptyPathSuffix = parseMarkerLine('fragment source=":1:1-2:1"');
+    const suffixConflict = parseMarkerLine('fragment source="./a:1:1-2:1" range="3:1-4:1"');
+
+    expect(isFailure(selectorConflict)).toBe(true);
+    expect(isFailure(invalidSuffix)).toBe(true);
+    expect(isFailure(emptyPathSuffix)).toBe(true);
+    expect(isSuccess(suffixConflict)).toBe(true);
+    if (isFailure(selectorConflict))
+      expect(selectorConflict.error.message).toContain("cannot be combined");
+    if (isFailure(invalidSuffix))
+      expect(invalidSuffix.error.message).toContain("source range suffix");
+    if (isFailure(emptyPathSuffix))
+      expect(emptyPathSuffix.error.message).toContain("resource path");
+    if (isSuccess(suffixConflict)) {
+      expect(suffixConflict.value?.attributes).toEqual({ source: "./a", range: "3:1-4:1" });
+    }
+  });
+
+  it("detects multiple markers while ignoring marker-like word boundaries and quoted text", () => {
+    const multiple = parseMarkerLine('fragment source="./a" /fragment fragment name="b"');
+    const embedded = parseMarkerLine('fragmented source="./a" and /fragmented');
+    const quoted = parseMarkerLine('fragment source="./folder/fragment name.md"');
+
+    expect(isFailure(multiple)).toBe(true);
+    expect(isSuccess(embedded)).toBe(true);
+    expect(isSuccess(quoted)).toBe(true);
+    if (isSuccess(embedded)) expect(embedded.value).toBeUndefined();
+    if (isSuccess(quoted))
+      expect(quoted.value?.attributes.source).toBe("./folder/fragment name.md");
+  });
+
+  it("ignores malformed unrelated attributes while validating recognized attributes", () => {
+    const attributeWithoutValue = parseMarkerLine('fragment source="./source.md" custom');
+    const unquotedCustomValue = parseMarkerLine('fragment source="./source.md" custom=value');
+    const unterminatedCustomValue = parseMarkerLine(
+      'fragment source="./source.md" custom="unfinished',
+    );
+    const invalidAttributeToken = parseMarkerLine('fragment source="./source.md" @@@');
+
+    for (const result of [attributeWithoutValue, unquotedCustomValue, invalidAttributeToken]) {
+      expect(isSuccess(result)).toBe(true);
+      if (isSuccess(result)) expect(result.value?.attributes.source).toBe("./source.md");
+    }
+    expect(isFailure(unterminatedCustomValue)).toBe(true);
+    if (isFailure(unterminatedCustomValue)) {
+      expect(unterminatedCustomValue.error.message).toContain("Unterminated quoted value");
+    }
   });
 
   it("returns undefined when a line contains no marker", () => {

@@ -26,6 +26,23 @@ afterEach(async () => {
 });
 
 describe("partial atomic-write failures", () => {
+  it("stringifies non-Error values thrown by the rename operation", async () => {
+    const root = await createProject();
+    const destination = join(root, "README.md");
+    await writeFile(destination, "old", "utf8");
+
+    const result = await writeDestinationPlansWithOperations([plan(destination, "old", "new")], {
+      rename: async () => {
+        throw "rename provider failed";
+      },
+    });
+
+    expect(result.written).toEqual([]);
+    expect(result.diagnostics[0]?.message).toContain("rename provider failed");
+    expect(await readFile(destination, "utf8")).toBe("old");
+    expect((await readdir(root)).toSorted()).toEqual(["README.md"]);
+  });
+
   it("reports earlier successful renames without claiming rollback", async () => {
     const root = await createProject();
     const first = join(root, "a.md");

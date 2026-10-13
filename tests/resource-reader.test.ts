@@ -169,6 +169,63 @@ describe("createResourceReader", () => {
     await reader.clear();
   });
 
+  it("updates registered consumer counts for content that is already cached", async () => {
+    const readText = vi.fn(async () => "cached before consumer registration");
+    const reader = createResourceReader(readText);
+    const source = resource("file:/project/late-consumers.md", "/project/late-consumers.md");
+
+    await reader.read(source, "source", "resolver", context);
+    reader.setConsumers(new Map([[source.id, 2]]));
+    await reader.release(source.id);
+    expect((await reader.read(source, "source", "resolver", context)).text).toBe(
+      "cached before consumer registration",
+    );
+    await reader.release(source.id);
+    await reader.release(source.id);
+
+    expect(readText).toHaveBeenCalledTimes(1);
+    await reader.clear();
+  });
+
+  it("releases a spilled entry without subtracting payload bytes twice", async () => {
+    const readText = vi.fn(async (path: string) => `contents:${path}`);
+    const reader = createResourceReader(readText, 0.00001);
+    const source = resource("file:/project/spilled-release.md", "/project/spilled-release.md");
+    reader.setConsumers(new Map([[source.id, 2]]));
+
+    await reader.read(source, "source", "resolver", context);
+    await reader.release(source.id);
+    await reader.release(source.id);
+    expect(readText).toHaveBeenCalledTimes(1);
+    await reader.release(source.id);
+    await reader.clear();
+  });
+
+  it("reports non-Error read failures and safely ignores releases for unknown resources", async () => {
+    const reader = createResourceReader(vi.fn().mockRejectedValue("disk unavailable"));
+    const source = resource("file:/project/non-error.md", "/project/non-error.md");
+
+    await expect(reader.read(source, "source", "resolver", context)).rejects.toMatchObject({
+      message: expect.stringContaining("disk unavailable"),
+    });
+    await expect(reader.release("file:/project/never-read.md")).resolves.toBeUndefined();
+    await reader.clear();
+  });
+
+  it("allows repeated releases without making active-consumer counts negative", async () => {
+    const reader = createResourceReader(vi.fn().mockResolvedValue("content"));
+    const source = resource("file:/project/release.md", "/project/release.md");
+    reader.setConsumers(new Map([[source.id, 2]]));
+
+    await reader.read(source, "source", "resolver", context);
+    await reader.release(source.id);
+    await reader.release(source.id);
+    await reader.release(source.id);
+
+    expect((await reader.read(source, "source", "resolver", context)).text).toBe("content");
+    await reader.clear();
+  });
+
   it("retries failed reads and clears cached content when requested", async () => {
     const readText = vi
       .fn<() => Promise<string>>()

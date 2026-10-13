@@ -150,7 +150,6 @@ describe("scanMarkers", () => {
     const text = [
       "The word fragment appears in documentation.",
       'fragment other="./source.md"',
-      'fragment range="1:1-2:1"',
       "/fragment",
       '/fragment source="./source.md"',
       'fragmentary source="./source.md"',
@@ -161,6 +160,43 @@ describe("scanMarkers", () => {
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
       expect(result.value).toEqual({ blocks: [], declarations: [] });
+    }
+  });
+
+  it("reports a range selector without a source instead of silently ignoring it", () => {
+    const result = scanMarkers('fragment range="1:1-2:1"', { resource: "README.md" });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.code).toBe("MARKER_SYNTAX_ERROR");
+      expect(result.error.message).toContain('requires a "source" attribute');
+    }
+  });
+
+  it("tracks lone-CR coordinates and preserves the absence of an unnamed parent declaration", () => {
+    const text = [
+      'fragment source="./outer.md"',
+      'fragment name="inner"',
+      "inner content",
+      "/fragment",
+      "/fragment",
+    ].join("\r");
+    const result = scanMarkers(text, { resource: "README.md" });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value.declarations).toHaveLength(1);
+      expect(result.value.declarations[0]?.location.start).toEqual({ line: 2, column: 1 });
+    }
+
+    const unclosedNamed = scanMarkers('fragment name="intro"', { resource: "README.md" });
+    expect(isFailure(unclosedNamed)).toBe(true);
+    if (isFailure(unclosedNamed)) {
+      expect(unclosedNamed.error.context?.public).toMatchObject({
+        name: "intro",
+        line: 1,
+        column: 1,
+      });
     }
   });
 

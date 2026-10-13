@@ -40,6 +40,40 @@ describe("normalizeResolvedResource", () => {
     expect(result.metadata).toEqual({ revision: "main" });
   });
 
+  it("rejects malformed resolver values and non-object metadata", async () => {
+    const cwd = await createDirectory("write-once-path-");
+    const context: ResourceContext = { cwd };
+
+    await expect(normalizeResolvedResource(null, "source", "test", context)).rejects.toMatchObject({
+      code: "SOURCE_RESOLUTION_ERROR",
+      message: expect.stringContaining("invalid resource path"),
+    });
+    await expect(
+      normalizeResolvedResource(
+        { root: cwd, path: "source.md", metadata: [] },
+        "source",
+        "test",
+        context,
+      ),
+    ).rejects.toMatchObject({
+      code: "SOURCE_RESOLUTION_ERROR",
+      message: expect.stringContaining("invalid metadata"),
+    });
+  });
+
+  it("rejects a file used as the declared resource root", async () => {
+    const cwd = await createDirectory("write-once-path-");
+    const fileRoot = join(cwd, "not-a-directory");
+    await writeFile(fileRoot, "file", "utf8");
+
+    await expect(
+      normalizeResolvedResource({ root: fileRoot, path: "source.md" }, "source", "test", { cwd }),
+    ).rejects.toMatchObject({
+      code: "SOURCE_RESOLUTION_ERROR",
+      message: expect.stringContaining("Resolved root is not a directory"),
+    });
+  });
+
   it("rejects absolute paths and traversal outside the declared root", async () => {
     const cwd = await createDirectory("write-once-path-");
     const context: ResourceContext = { cwd };

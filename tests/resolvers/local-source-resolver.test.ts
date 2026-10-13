@@ -55,6 +55,15 @@ describe("localSourceResolver", () => {
     expect(localSourceResolver.canResolve("./source.md", context)).toBe(true);
   });
 
+  it.skipIf(process.platform === "win32")(
+    "rejects Windows absolute paths on non-Windows platforms",
+    () => {
+      expect(() => localSourceResolver.resolve("C:\\repo\\source.md", { cwd: "/tmp" })).toThrow(
+        expect.objectContaining({ code: "SOURCE_RESOLUTION_ERROR" }),
+      );
+    },
+  );
+
   it("rejects URL sources instead of attempting network access", () => {
     expect(() =>
       localSourceResolver.resolve("https://example.com/source.md", { cwd: "/tmp" }),

@@ -130,6 +130,38 @@ describe("discoverDestinationFiles", () => {
     expect(result.diagnostics).toMatchObject([{ severity: "error", stage: "discovery" }]);
   });
 
+  it("rejects include patterns containing NUL characters", async () => {
+    const root = await createProject();
+    await writeFile(join(root, "README.md"), "readme", "utf8");
+
+    const result = await discoverDestinationFiles(config(root, ["README\0.md"]));
+
+    expect(result.files).toEqual([]);
+    expect(result.diagnostics).toMatchObject([
+      {
+        severity: "error",
+        stage: "discovery",
+        message: expect.stringContaining("Invalid include pattern"),
+      },
+    ]);
+  });
+
+  it("sorts diagnostics from multiple unreadable nested .gitignore entries", async () => {
+    const root = await createProject();
+    await mkdir(join(root, "z"));
+    await mkdir(join(root, "a"));
+    await mkdir(join(root, "z", ".gitignore"));
+    await mkdir(join(root, "a", ".gitignore"));
+
+    const result = await discoverDestinationFiles(config(root));
+
+    expect(result.files).toEqual([]);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.file)).toEqual([
+      join(root, "a", ".gitignore"),
+      join(root, "z", ".gitignore"),
+    ]);
+  });
+
   it("reports invalid exclude patterns instead of scanning", async () => {
     const root = await createProject();
     await writeFile(join(root, "README.md"), "readme", "utf8");

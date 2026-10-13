@@ -2,10 +2,11 @@ import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { validateConfig } from "@/config";
 import { planDestinationFile } from "@/generation-plan";
+import { createResourceReader } from "@/resource-reader";
 
 const directories: string[] = [];
 
@@ -98,6 +99,42 @@ describe("generation plan edge cases", () => {
           "suffix <!-- /fragment --> trailing",
         ].join("\n"),
       );
+    }
+  });
+
+  it("keeps an injected reader usable after a planning read fails", async () => {
+    const { root, config } = await setup();
+    const readText = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new Error("temporary I/O failure"))
+      .mockResolvedValueOnce("recovered content");
+    const reader = createResourceReader(readText);
+    const destination = join(root, "README.md");
+    const text = 'fragment source="./source.md"\nold\n/fragment';
+
+    const failed = await planDestinationFile({ destination, text, config, reader });
+    expect(isFailure(failed)).toBe(true);
+    if (isFailure(failed)) expect(failed.error.stage).toBe("resolve");
+
+    const recovered = await planDestinationFile({ destination, text, config, reader });
+    expect(isSuccess(recovered)).toBe(true);
+    if (isSuccess(recovered)) expect(recovered.value.outputText).toContain("recovered content");
+    expect(readText).toHaveBeenCalledTimes(2);
+    await reader.clear();
+  });
+
+  it("rejects sources unsupported by every registered resolver before reading", async () => {
+    const { root, config } = await setup();
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text: 'fragment source="unsupported:resource"\nold\n/fragment',
+      config: { ...config, resolvers: [] },
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.stage).toBe("resolve");
+      expect(result.error.message).toContain('could not resolve source "unsupported:resource"');
     }
   });
 

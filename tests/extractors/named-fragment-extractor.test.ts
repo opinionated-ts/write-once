@@ -89,6 +89,27 @@ describe("namedFragmentExtractor", () => {
     );
   });
 
+  it("rejects a non-named selector and runtime resources without text", () => {
+    const resource: ResolvedContent = {
+      root: "/project",
+      path: "source.md",
+      id: "file:source",
+      location: "/project/source.md",
+      text: "content",
+    };
+    const missingText = { ...resource };
+    Object.defineProperty(missingText, "text", { value: undefined });
+
+    expect(() => namedFragmentExtractor.extract(resource, { kind: "whole" })).toThrow(
+      expect.objectContaining({
+        message: "The named-fragment extractor requires a named selector.",
+      }),
+    );
+    expect(() => namedFragmentExtractor.extract(missingText, named("intro"))).toThrow(
+      expect.objectContaining({ message: expect.stringContaining("does not provide text") }),
+    );
+  });
+
   it("only accepts named selectors and requires text", () => {
     const resource: ResolvedContent = {
       root: "/project",

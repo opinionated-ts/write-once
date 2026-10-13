@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import { mapConcurrent } from "@/async-pool";
 
 describe("mapConcurrent", () => {
+  it("returns an empty result without invoking the operation for empty input", async () => {
+    let calls = 0;
+    const result = await mapConcurrent([], 2, async () => {
+      calls += 1;
+      return "unexpected";
+    });
+
+    expect(result).toEqual([]);
+    expect(calls).toBe(0);
+  });
+
   it("caps active work and preserves input order", async () => {
     let active = 0;
     let maximum = 0;

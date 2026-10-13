@@ -26,6 +26,54 @@ afterEach(async () => {
 });
 
 describe("writeDestinationPlans", () => {
+  it("rejects duplicate destinations before staging and preserves their content", async () => {
+    const root = await createProject();
+    const destination = join(root, "README.md");
+    await writeFile(destination, "original", "utf8");
+
+    const result = await writeDestinationPlans([
+      plan(destination, "original", "first output"),
+      plan(destination, "original", "second output"),
+    ]);
+
+    expect(result.written).toEqual([]);
+    expect(result.diagnostics[0]?.message).toContain("appears more than once");
+    expect(await readFile(destination, "utf8")).toBe("original");
+    expect(await readdir(root)).toEqual(["README.md"]);
+  });
+
+  it("reports a missing destination as a staging failure without creating files", async () => {
+    const root = await createProject();
+    const destination = join(root, "missing.md");
+
+    const result = await writeDestinationPlans([plan(destination, "old", "new")]);
+
+    expect(result.written).toEqual([]);
+    expect(result.diagnostics).toMatchObject([
+      {
+        stage: "write",
+        file: destination,
+        message: expect.stringContaining("Could not stage destination output"),
+      },
+    ]);
+    expect(await readdir(root)).toEqual([]);
+  });
+
+  it("refuses to overwrite a destination changed after planning", async () => {
+    const root = await createProject();
+    const destination = join(root, "README.md");
+    await writeFile(destination, "newer content", "utf8");
+
+    const result = await writeDestinationPlans([
+      plan(destination, "old planned content", "generated"),
+    ]);
+
+    expect(result.written).toEqual([]);
+    expect(result.diagnostics[0]?.message).toContain("changed after planning");
+    expect(await readFile(destination, "utf8")).toBe("newer content");
+    expect(await readdir(root)).toEqual(["README.md"]);
+  });
+
   it("atomically replaces changed files and preserves file permissions", async () => {
     const root = await createProject();
     const destination = join(root, "README.md");

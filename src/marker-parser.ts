@@ -62,7 +62,7 @@ function findMarker(line: string) {
         previous !== "/" &&
         !isWord(previous) &&
         /\s/.test(line[end] ?? "") &&
-        /(?:^|\s)(?:source|name)\s*=\s*"[^"]*"/.test(line.slice(end))
+        /(?:^|\s)(?:source|name|range)\s*=\s*"[^"]*"/.test(line.slice(end))
       ) {
         found.push({ kind: "open", start: index, end });
         firstMarkerEnd = end;
@@ -258,15 +258,6 @@ export function parseMarkerLine(lineText: string, options: ParseMarkerLineOption
     if (attribute?.value !== undefined) attributes[name] = attribute.value;
   }
 
-  if (marker.kind === "close" && recognized.size > 0) {
-    return makeSyntaxError("Closing fragment markers cannot have semantic attributes.", {
-      resource,
-      line,
-      column: marker.start + 1,
-      offset: offset + marker.start,
-    });
-  }
-
   if (attributes.name !== undefined && attributes.range !== undefined) {
     const conflict = recognized.get("range")!;
     return makeSyntaxError('Attributes "name" and "range" cannot be combined.', {
@@ -329,13 +320,15 @@ export function parseMarkerLine(lineText: string, options: ParseMarkerLineOption
   }
 
   if (attributes.name !== undefined && attributes.range !== undefined) {
-    const conflict = recognized.get("range")!;
+    // Explicit ranges were handled above; a remaining range can only come
+    // from the source suffix, so point the diagnostic at the source attribute.
+    const conflict = recognized.get("range") ?? recognized.get("source")!;
     return makeSyntaxError('Attributes "name" and an effective range cannot be combined.', {
       resource,
       line,
       column: conflict.start + 1,
       offset: offset + conflict.start,
-      attribute: "range",
+      attribute: recognized.has("range") ? "range" : "source",
     });
   }
 

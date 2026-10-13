@@ -96,6 +96,23 @@ describe("loadWriteOnceConfig", () => {
     if (isSuccess(selected)) expect(selected.value.config.root).toBe(join(cwd, "two"));
   });
 
+  it("reports exceptions thrown while evaluating executable config files", async () => {
+    const cwd = await createProject();
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      'throw new Error("config evaluation failed");',
+      "utf8",
+    );
+
+    const result = await loadWriteOnceConfig({ cwd });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.code).toBe("CONFIG_LOAD_ERROR");
+      expect(result.error.message).toContain("config evaluation failed");
+    }
+  });
+
   it("rejects missing explicit files, invalid content, and invalid config values", async () => {
     const cwd = await createProject();
 
