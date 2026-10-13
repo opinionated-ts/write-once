@@ -4,5 +4,12 @@ import { defineConfig } from "oxfmt";
 export default defineConfig({
   ...oxfmtConfig,
 
-  // Custom configuration here
+  overrides: [
+    {
+      files: ["**/*.md", "**/*.mdx"],
+      options: {
+        embeddedLanguageFormatting: "off",
+      },
+    },
+  ],
 });

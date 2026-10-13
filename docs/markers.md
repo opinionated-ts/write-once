@@ -8,7 +8,6 @@ Wrap markers in comments appropriate to the file:
 
 ```md
 <!-- fragment source="./content.md" -->
-
 Generated content goes here.
 <!-- /fragment -->
 ```
@@ -32,12 +31,9 @@ Ignore the next fragment block:
 ```md
 <!-- write-once-ignore-next -->
 <!-- fragment range="not-a-valid-range" -->
-
 This intentionally invalid example is left untouched.
 <!-- /fragment -->
-
 <!-- fragment source="./content.md" -->
-
 This fragment is still processed normally.
 <!-- /fragment -->
 ```
@@ -63,7 +59,6 @@ A marker with `name` and no `source` declares a manually maintained fragment:
 
 ```md
 <!-- fragment name="intro" -->
-
 This text is maintained by hand.
 <!-- /fragment -->
 ```
@@ -92,7 +87,6 @@ Whole source:
 
 ```md
 <!-- fragment source="./docs/guide.md" -->
-
 Generated guide.
 <!-- /fragment -->
 ```
@@ -101,7 +95,6 @@ Named source:
 
 ```md
 <!-- fragment source="./docs/fragments.md" name="intro" -->
-
 Generated introduction.
 <!-- /fragment -->
 ```
@@ -114,7 +107,6 @@ Use the explicit attribute:
 
 ```md
 <!-- fragment source="./src/example.ts" range="10:5-14:1" -->
-
 Generated selected lines.
 <!-- /fragment -->
 ```
@@ -123,7 +115,6 @@ Or append the range to the source reference:
 
 ```md
 <!-- fragment source="./src/example.ts:10:5-14:1" -->
-
 Generated selected lines.
 <!-- /fragment -->
 ```
@@ -140,3 +131,17 @@ Range coordinates follow editor selection conventions:
 - Empty ranges are allowed. Out-of-bounds coordinates and reversed ranges are errors, never silently clamped.
 
 For example, `range="2:3-3:1"` starts at the third UTF-16 code unit on line 2 and ends at the start of line 3, including the line break between them.
+
+## Related guides
+
+**Recommended next:**
+
+- [Configuration](configuration.md)
+- [CLI workflow and diagnostics](cli.md)
+
+**Other guides:**
+
+- [Public TypeScript API](api.md)
+- [JSON configuration](json-configuration.md)
+- [YAML configuration](yaml-configuration.md)
+- [README and quick start](../README.md)

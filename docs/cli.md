@@ -34,3 +34,17 @@ Diagnostics are written to stderr and include severity (`error`, `warning`, or `
 - Writes are atomic per file, not across the project. If a later rename fails after earlier files were replaced, those earlier updates remain; write-once reports the partial result and does not claim rollback.
 
 The v1 CLI does not provide `check` or dry-run modes. Remote resolvers and language-aware semantic extractors are also future work; the built-in resolver reads local text files only.
+
+## Related guides
+
+**Recommended next:**
+
+- [Configuration](configuration.md)
+- [Markers and selectors](markers.md)
+
+**Other guides:**
+
+- [Public TypeScript API](api.md)
+- [JSON configuration](json-configuration.md)
+- [YAML configuration](yaml-configuration.md)
+- [README and quick start](../README.md)

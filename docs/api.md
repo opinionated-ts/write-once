@@ -60,3 +60,17 @@ Returning `{ fullText: rebuiltBlock }` opts into replacing the wider span from t
 Hooks use registration order. V1 runs only the first matching `pre-write` hook for each generated block; it does not chain hooks. A thrown or rejected hook is an error and prevents destination writes for that run.
 
 The config loader and validator return Result values from `@opinionated-ts/result`; use its `isSuccess` and `isFailure` helpers to inspect them.
+
+## Related guides
+
+**Recommended next:**
+
+- [Configuration](configuration.md)
+- [CLI workflow and diagnostics](cli.md)
+
+**Other guides:**
+
+- [JSON configuration](json-configuration.md)
+- [Markers and selectors](markers.md)
+- [YAML configuration](yaml-configuration.md)
+- [README and quick start](../README.md)

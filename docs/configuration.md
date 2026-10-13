@@ -75,3 +75,17 @@ JSON and YAML are supported for static configuration, but cannot express executa
 ## Security
 
 TypeScript and JavaScript config files execute user code when loaded. Only load executable config files you trust.
+
+## Related guides
+
+**Recommended next:**
+
+- [CLI workflow and diagnostics](cli.md)
+- [Markers and selectors](markers.md)
+
+**Other guides:**
+
+- [Public TypeScript API](api.md)
+- [JSON configuration](json-configuration.md)
+- [YAML configuration](yaml-configuration.md)
+- [README and quick start](../README.md)

@@ -16,21 +16,27 @@ export default {
 
 In `content.md`, mark a source section:
 
+<!-- write-once-ignore-start -->
+
 ```md
 <!-- fragment name="intro" -->
-
 Reusable introduction.
 <!-- /fragment -->
 ```
 
+<!-- write-once-ignore-end -->
+
 In `README.md`, reference it from a destination:
+
+<!-- write-once-ignore-start -->
 
 ```md
 <!-- fragment source="./content.md" name="intro" -->
-
 Generated introduction.
 <!-- /fragment -->
 ```
+
+<!-- write-once-ignore-end -->
 
 Run:
 
