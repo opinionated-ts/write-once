@@ -15,13 +15,13 @@ See [configuration](configuration.md) for defaults, file discovery, and supporte
 
 The core exports independent `ResourcePreparer`, `ResourceResolver`, `ContentExtractor`, and `GenerationHook` contracts, plus their supporting types:
 
-- A preparer synchronously selects source references, then receives its selected references as one asynchronous-capable batch. Its context supplies a Write Once-managed temporary working directory; prepared resources must remain inside it. One result can describe multiple roots, each associated with the references it serves; provider-specific values remain opaque to the core. Triggers should be fast, synchronous, and side-effect-free.
+- A preparer synchronously selects source references in registration order; the first matching preparer wins. It then receives its selected references as one asynchronous-capable batch. Its context supplies a Write Once-managed temporary working directory; prepared resources must remain inside it. One result can describe multiple roots, each associated with the references it serves; provider-specific values remain opaque to the core. Triggers should be fast, synchronous, and side-effect-free.
 - `PathResourceResolver` resolves a source reference to `ResolvedResourcePath`: a root, relative path, and optional metadata, never file contents. `ResourceContext` can carry preparation results to resolvers.
 - A resolver maps a source reference to a resource identity/location, text, and/or metadata.
 - An extractor selects whole-file text, a named fragment, a range, or another content shape from an already resolved resource.
 - A hook receives `HookContext` and returns either `{ text }` or `{ fullText }`.
 
-A plugin can contribute any combination of preparers, resolvers, extractors, and hooks through `PluginContribution`. Resolver and extractor selection uses descending priority followed by registration order. The v1 pipeline runs one `pre-write` hook per generated block, selecting by priority and then registration order; hooks are not chained.
+A plugin can contribute any combination of preparers, resolvers, extractors, and hooks through `PluginContribution`. Resolvers, extractors, and hooks use registration order; the first compatible resolver or extractor is selected, and the first registered `pre-write` hook runs per generated block. Hooks are not chained.
 
 The public contracts include marker spans, source coordinates, selectors, resource metadata, and structured diagnostics. Built-in resolver/extractor implementations and pipeline orchestration are not exported from the package root.
 
@@ -45,6 +45,6 @@ A hook returning `{ text: content }` replaces only the body. The `before`, `trai
 
 Returning `{ fullText: rebuiltBlock }` opts into replacing the wider span from the start of the opening delimiter line through the end of the closing delimiter line. That span includes inline wrappers and surrounding text on those lines. The hook must rebuild any marker syntax or wrappers it wants to keep.
 
-Hooks are selected by descending `priority`, then registration order. V1 runs only the first matching `pre-write` hook for each generated block; it does not chain hooks. A thrown or rejected hook is an error and prevents destination writes for that run.
+Hooks use registration order. V1 runs only the first matching `pre-write` hook for each generated block; it does not chain hooks. A thrown or rejected hook is an error and prevents destination writes for that run.
 
 The config loader and validator return Result values from `@opinionated-ts/result`; use its `isSuccess` and `isFailure` helpers to inspect them.

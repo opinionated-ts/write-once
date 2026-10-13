@@ -65,6 +65,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isResolver(value: unknown): value is ResourceResolver {
   return (
     isRecord(value) &&
+    !("priority" in value) &&
     typeof value["id"] === "string" &&
     value["id"].length > 0 &&
     typeof value["canResolve"] === "function" &&
@@ -75,6 +76,7 @@ function isResolver(value: unknown): value is ResourceResolver {
 function isPreparer(value: unknown): value is ResourcePreparer {
   return (
     isRecord(value) &&
+    !("priority" in value) &&
     typeof value["id"] === "string" &&
     value["id"].length > 0 &&
     typeof value["canPrepare"] === "function" &&
@@ -85,6 +87,7 @@ function isPreparer(value: unknown): value is ResourcePreparer {
 function isExtractor(value: unknown): value is ContentExtractor {
   return (
     isRecord(value) &&
+    !("priority" in value) &&
     typeof value["id"] === "string" &&
     value["id"].length > 0 &&
     typeof value["canExtract"] === "function" &&
@@ -95,6 +98,7 @@ function isExtractor(value: unknown): value is ContentExtractor {
 function isHook(value: unknown): value is GenerationHook {
   return (
     isRecord(value) &&
+    !("priority" in value) &&
     typeof value["id"] === "string" &&
     value["id"].length > 0 &&
     typeof value["stage"] === "string" &&

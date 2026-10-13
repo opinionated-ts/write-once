@@ -110,18 +110,12 @@ describe("pre-write hook contract", () => {
     }
   });
 
-  it("orders competing hooks by priority then registration order without chaining", async () => {
+  it("selects the first matching hook by registration order without chaining", async () => {
     const { root, config } = await setup();
     const text = 'fragment source="./source.md"\nold\n/fragment';
     const hooks: GenerationHook[] = [
-      { id: "first", stage: "pre-write", priority: 10, run: () => ({ text: "first" }) },
-      { id: "higher", stage: "pre-write", priority: 20, run: () => ({ text: "higher" }) },
-      {
-        id: "same-priority-later",
-        stage: "pre-write",
-        priority: 20,
-        run: () => ({ text: "later" }),
-      },
+      { id: "first", stage: "pre-write", run: () => ({ text: "first" }) },
+      { id: "second", stage: "pre-write", run: () => ({ text: "second" }) },
     ];
 
     const result = await planDestinationFile({
@@ -131,7 +125,7 @@ describe("pre-write hook contract", () => {
     });
 
     expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) expect(result.value.outputText).toContain("higher");
+    if (isSuccess(result)) expect(result.value.outputText).toContain("first");
   });
 
   it("surfaces rejected hooks and leaves destination files untouched", async () => {

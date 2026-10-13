@@ -218,12 +218,11 @@ export interface ExtractedContent {
 /**
  * Finds or acquires a resource for a source reference.
  *
- * Resolvers do not choose which content is extracted. If multiple resolvers
- * match, the pipeline can order them by priority and then registration order.
+ * Resolvers do not choose which content is extracted. The first compatible
+ * resolver in registration order is selected.
  */
 export interface ResourceResolver {
   id: string;
-  priority?: number;
   canResolve(source: string, context: ResourceContext): boolean;
   resolve(source: string, context: ResourceContext): ResolvedResource | Promise<ResolvedResource>;
 }
@@ -231,13 +230,11 @@ export interface ResourceResolver {
 /**
  * Selects content from an already resolved resource.
  *
- * Extractors do not acquire resources or write destination files. If multiple
- * extractors match, the pipeline can order them by priority and then
- * registration order.
+ * Extractors do not acquire resources or write destination files. The first
+ * compatible extractor in registration order is selected.
  */
 export interface ContentExtractor {
   id: string;
-  priority?: number;
   canExtract(
     resource: ResolvedResource,
     selector: SourceSelector,
@@ -298,13 +295,11 @@ export type HookOutput = { text: string; fullText?: never } | { fullText: string
 /**
  * Customizes content at a named generation stage.
  *
- * Hooks may be synchronous or asynchronous. When multiple hooks target the
- * same stage, the pipeline can order them by priority and then registration
- * order. A hook must return an explicit replacement scope.
+ * Hooks may be synchronous or asynchronous. The first hook registered for a
+ * supported stage is selected. A hook must return an explicit replacement scope.
  */
 export interface GenerationHook {
   id: string;
   stage: string;
-  priority?: number;
   run(context: HookContext): HookOutput | Promise<HookOutput>;
 }

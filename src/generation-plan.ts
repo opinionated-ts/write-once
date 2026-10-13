@@ -110,22 +110,12 @@ function selectorFor(source: string, name?: string, range?: string): SourceSelec
   };
 }
 
-function ordered<T extends { priority?: number }>(items: readonly T[]): T[] {
-  return items
-    .map((item, index) => ({ item, index }))
-    .toSorted(
-      (left, right) =>
-        (right.item.priority ?? 0) - (left.item.priority ?? 0) || left.index - right.index,
-    )
-    .map(({ item }) => item);
-}
-
 function selectResolver(
   resolvers: readonly ResourceResolver[],
   source: string,
   context: Parameters<ResourceResolver["canResolve"]>[1],
 ): ResourceResolver | undefined {
-  return ordered(resolvers).find((resolver) => resolver.canResolve(source, context));
+  return resolvers.find((resolver) => resolver.canResolve(source, context));
 }
 
 function selectExtractor(
@@ -134,12 +124,12 @@ function selectExtractor(
   selector: SourceSelector,
   context: Parameters<ContentExtractor["canExtract"]>[2],
 ): ContentExtractor | undefined {
-  return ordered(extractors).find((extractor) => extractor.canExtract(resource, selector, context));
+  return extractors.find((extractor) => extractor.canExtract(resource, selector, context));
 }
 
 function selectHook(hooks: readonly GenerationHook[]): GenerationHook | undefined {
-  // V1 runs one hook per destination block: highest priority, then registration order.
-  return ordered(hooks.filter((hook) => hook.stage === "pre-write"))[0];
+  // V1 runs one hook per destination block: the first registered matching hook.
+  return hooks.find((hook) => hook.stage === "pre-write");
 }
 
 function prepareBodyText(replacement: string, destination: string): string {
@@ -313,7 +303,7 @@ async function planBlock(
 
 /**
  * Prepare a destination output in memory. This function never writes files.
- * Compatible capabilities are ordered by descending priority, then registration order.
+ * Compatible capabilities are selected in registration order.
  */
 export async function planDestinationFile(options: PlanDestinationOptions) {
   const { destination, text, config } = options;

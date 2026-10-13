@@ -84,6 +84,10 @@ describe("validateConfig", () => {
       { preparers: [{}] },
       '"preparers" must contain preparer objects with id, canPrepare, and prepare.',
     ],
+    [{ preparers: [{ ...preparer, priority: 10 }] }, "preparers"],
+    [{ resolvers: [{ ...resolver, priority: 10 }] }, "resolvers"],
+    [{ extractors: [{ ...extractor, priority: 10 }] }, "extractors"],
+    [{ hooks: [{ ...hook, priority: 10 }] }, "hooks"],
     [
       { resolvers: [{}] },
       '"resolvers" must contain resolver objects with id, canResolve, and resolve.',
