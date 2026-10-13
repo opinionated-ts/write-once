@@ -23,6 +23,7 @@ export type {
   PathResourceResolver,
   PluginContribution,
   PreparedResource,
+  PreparedResourceBatch,
   RangeSelector,
   ResourcePreparationContext,
   ResourcePreparationResult,

@@ -8,8 +8,10 @@ import type {
   GenerationHook,
   HookOutput,
   MarkerBlock,
+  PreparedResourceBatch,
   ResourceResolver,
   ResolvedResource,
+  SourceReferenceContext,
   SourceSelector,
   TextSpan,
 } from "./types.js";
@@ -25,6 +27,12 @@ export interface PlanDestinationOptions {
   destination: string;
   text: string;
   config: NormalizedWriteOnceConfig;
+  scan?: DestinationScan;
+  preparations?: readonly PreparedResourceBatch[];
+}
+
+export interface DestinationScan {
+  references: SourceReferenceContext[];
 }
 
 export interface PlannedReplacement {
@@ -88,7 +96,7 @@ function diagnosticError(
   } satisfies Diagnostic);
 }
 
-function selectorFor(source: string, name?: string, range?: string): SourceSelector {
+export function selectorFor(source: string, name?: string, range?: string): SourceSelector {
   if (name !== undefined) return { kind: "named", name };
   if (range === undefined) return { kind: "whole" };
 
@@ -108,6 +116,50 @@ function selectorFor(source: string, name?: string, range?: string): SourceSelec
       end: { line: Number(endLine), column: Number(endColumn) },
     },
   };
+}
+
+/** Scan one destination once and collect source references with selector context. */
+export function scanDestinationFile(destination: string, text: string) {
+  const scanned = scanMarkers(text, { resource: destination });
+  if (isFailure(scanned)) {
+    return error({
+      severity: "error" as const,
+      stage: "marker" as const,
+      message: scanned.error.message,
+      file: destination,
+      markerLocation: markerErrorLocation(scanned.error, destination),
+      cause: scanned.error,
+    } satisfies Diagnostic);
+  }
+
+  const generated = scanned.value.blocks
+    .filter((block) => block.opening.attributes.source !== undefined)
+    .toSorted((left, right) => left.span.start - right.span.start);
+  const references: SourceReferenceContext[] = [];
+
+  for (const marker of generated) {
+    const { source, name, range } = marker.opening.attributes;
+    if (source === undefined) continue;
+
+    try {
+      references.push({
+        source,
+        selector: selectorFor(source, name, range),
+        destination,
+        marker,
+      });
+    } catch (cause) {
+      return diagnosticError(
+        "marker",
+        cause instanceof Error ? cause.message : String(cause),
+        destination,
+        marker,
+        cause,
+      );
+    }
+  }
+
+  return ok({ references });
 }
 
 function selectResolver(
@@ -152,33 +204,20 @@ function validSpan(span: TextSpan, length: number): boolean {
 async function planBlock(
   destination: string,
   text: string,
-  marker: MarkerBlock,
+  reference: SourceReferenceContext,
   config: NormalizedWriteOnceConfig,
+  preparations: readonly PreparedResourceBatch[],
 ): Promise<ReturnType<typeof ok<PlannedReplacement>> | ReturnType<typeof diagnosticError>> {
-  const { source, name, range } = marker.opening.attributes;
-  if (source === undefined) {
-    return diagnosticError(
-      "marker",
-      "A generated destination must specify a source.",
-      destination,
-      marker,
-    );
-  }
-
-  let selector: SourceSelector;
-  try {
-    selector = selectorFor(source, name, range);
-  } catch (cause) {
-    return diagnosticError(
-      "marker",
-      cause instanceof Error ? cause.message : String(cause),
-      destination,
-      marker,
-      cause,
-    );
-  }
-
-  const context = { cwd: config.root, destination };
+  const { source, selector, marker } = reference;
+  const relevantPreparations = preparations.filter((preparation) =>
+    preparation.references.some(
+      (assigned) =>
+        assigned.destination === reference.destination &&
+        assigned.marker.span.start === reference.marker.span.start &&
+        assigned.source === reference.source,
+    ),
+  );
+  const context = { cwd: config.root, destination, preparations: relevantPreparations };
   const resolvers = [...config.resolvers, localSourceResolver];
   let resolver: ResourceResolver | undefined;
   let resource: ResolvedResource;
@@ -307,27 +346,18 @@ async function planBlock(
  */
 export async function planDestinationFile(options: PlanDestinationOptions) {
   const { destination, text, config } = options;
-  const scanned = scanMarkers(text, { resource: destination });
-  if (isFailure(scanned)) {
-    return error({
-      severity: "error" as const,
-      stage: "marker" as const,
-      message: scanned.error.message,
-      file: destination,
-      markerLocation: markerErrorLocation(scanned.error, destination),
-      cause: scanned.error,
-    } satisfies Diagnostic);
+  const scan =
+    options.scan === undefined ? scanDestinationFile(destination, text) : ok(options.scan);
+  if (!scan.ok) {
+    return error(scan.error);
   }
 
-  const generated = scanned.value.blocks
-    .filter((block) => block.opening.attributes.source !== undefined)
-    .toSorted((left, right) => left.span.start - right.span.start);
-
+  const preparations = options.preparations ?? [];
   const replacements: PlannedReplacement[] = [];
-  for (const marker of generated) {
+  for (const reference of scan.value.references) {
     // Preserve source-order hook execution; hooks may have observable side effects.
     // oxlint-disable-next-line no-await-in-loop
-    const planned = await planBlock(destination, text, marker, config);
+    const planned = await planBlock(destination, text, reference, config, preparations);
     if (!planned.ok) return error(planned.error);
     replacements.push(planned.value);
   }

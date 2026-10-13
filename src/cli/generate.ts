@@ -5,7 +5,17 @@ import type { Diagnostic } from "../types.js";
 
 import { loadWriteOnceConfig } from "../config-loader.js";
 import { discoverDestinationFiles } from "../discovery.js";
-import { planDestinationFile, type DestinationPlan } from "../generation-plan.js";
+import {
+  planDestinationFile,
+  scanDestinationFile,
+  type DestinationPlan,
+  type DestinationScan,
+} from "../generation-plan.js";
+import {
+  cleanupPreparedResources,
+  prepareSourceReferences,
+  ResourcePreparationFailure,
+} from "../resource-preparation.js";
 import { writeDestinationPlans } from "../safe-write.js";
 
 export interface GenerateOptions {
@@ -55,8 +65,8 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
     };
   }
 
-  const plans: DestinationPlan[] = [];
-  // Process destination files sequentially so diagnostics and hook execution stay deterministic.
+  const inputs: Array<{ destination: string; text: string; scan: DestinationScan }> = [];
+  // Read and scan each destination once before discovering preparer batches.
   // oxlint-disable no-await-in-loop
   for (const destination of discovery.files) {
     let text: string;
@@ -73,9 +83,9 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
       continue;
     }
 
-    const planned = await planDestinationFile({ destination, text, config: loaded.value.config });
-    if (!planned.ok) diagnostics.push(planned.error);
-    else plans.push(planned.value);
+    const scan = scanDestinationFile(destination, text);
+    if (!scan.ok) diagnostics.push(scan.error);
+    else inputs.push({ destination, text, scan: scan.value });
   }
   // oxlint-enable no-await-in-loop
 
@@ -84,21 +94,92 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
       exitCode: 1,
       diagnostics,
       discoveredCount: discovery.files.length,
-      plannedCount: plans.length,
+      plannedCount: 0,
       written: [],
       unchanged: [],
     };
   }
 
-  const writeResult = await writeDestinationPlans(plans);
-  diagnostics.push(...writeResult.diagnostics);
+  const references = inputs.flatMap((input) => input.scan.references);
+  let prepared;
+  try {
+    prepared = await prepareSourceReferences(references, loaded.value.config);
+  } catch (cause) {
+    const failure =
+      cause instanceof ResourcePreparationFailure
+        ? cause
+        : new ResourcePreparationFailure(
+            "<unknown>",
+            references,
+            "Resource preparation failed.",
+            cause,
+          );
+    const reference = failure.references[0];
+    diagnostics.push({
+      severity: "error",
+      stage: "prepare",
+      message: failure.message,
+      ...(reference === undefined
+        ? {}
+        : {
+            file: reference.destination,
+            markerLocation: reference.marker.opening.location,
+            source: reference.source,
+          }),
+      cause: failure,
+    });
+    return {
+      exitCode: 1,
+      diagnostics,
+      discoveredCount: discovery.files.length,
+      plannedCount: 0,
+      written: [],
+      unchanged: [],
+    };
+  }
 
-  return {
-    exitCode: writeResult.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? 1 : 0,
-    diagnostics,
-    discoveredCount: discovery.files.length,
-    plannedCount: plans.length,
-    written: writeResult.written,
-    unchanged: writeResult.unchanged,
-  };
+  try {
+    const plans: DestinationPlan[] = [];
+    // Resolve and plan only after every selected preparer has completed.
+    // oxlint-disable no-await-in-loop
+    for (const input of inputs) {
+      const planned = await planDestinationFile({
+        destination: input.destination,
+        text: input.text,
+        config: loaded.value.config,
+        scan: input.scan,
+        preparations: prepared.preparations,
+      });
+      if (!planned.ok) diagnostics.push(planned.error);
+      else plans.push(planned.value);
+    }
+    // oxlint-enable no-await-in-loop
+
+    if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+      return {
+        exitCode: 1,
+        diagnostics,
+        discoveredCount: discovery.files.length,
+        plannedCount: plans.length,
+        written: [],
+        unchanged: [],
+      };
+    }
+
+    const writeResult = await writeDestinationPlans(plans);
+    diagnostics.push(...writeResult.diagnostics);
+
+    return {
+      exitCode: writeResult.diagnostics.some((diagnostic) => diagnostic.severity === "error")
+        ? 1
+        : 0,
+      diagnostics,
+      discoveredCount: discovery.files.length,
+      plannedCount: plans.length,
+      written: writeResult.written,
+      unchanged: writeResult.unchanged,
+    };
+  } finally {
+    await cleanupPreparedResources(prepared);
+  }
 }

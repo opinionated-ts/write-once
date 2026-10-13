@@ -200,12 +200,18 @@ export type ResolvedResource = {
   | { text?: string; metadata: Readonly<Record<string, unknown>> }
 );
 
-/** Shared information available while resolving or extracting a resource. */
+/** A preparer's opaque result paired with the references assigned to it. */
+export interface PreparedResourceBatch {
+  preparerId: string;
+  references: readonly SourceReferenceContext[];
+  result: ResourcePreparationResult;
+}
+
 export interface ResourceContext {
   cwd: string;
   destination?: string;
   metadata?: Readonly<Record<string, unknown>>;
-  preparations?: readonly ResourcePreparationResult[];
+  preparations?: readonly PreparedResourceBatch[];
 }
 
 /** The selected text and its location within the source resource, when known. */
@@ -252,6 +258,7 @@ export type DiagnosticStage =
   | "config"
   | "discovery"
   | "marker"
+  | "prepare"
   | "resolve"
   | "extract"
   | "hook"
