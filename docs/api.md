@@ -4,7 +4,7 @@ The package root exports the config loader, config validator, and contracts inte
 
 ## Configuration
 
-- `WriteOnceConfig` describes optional `root`, `include`, `exclude`, `resolvers`, `extractors`, and `hooks`.
+- `WriteOnceConfig` describes optional `root`, `include`, `exclude`, `preparers`, `resolvers`, `extractors`, and `hooks`.
 - `validateConfig(value, cwd)` validates unknown input and returns a Result containing normalized config or a validation error.
 - `loadWriteOnceConfig({ cwd, configPath? })` loads through c12, rejects ambiguous automatic discovery, and returns normalized config or an error.
 - `NormalizedWriteOnceConfig` is the validated config shape used by the generation pipeline.
@@ -13,13 +13,15 @@ See [configuration](configuration.md) for defaults, file discovery, and supporte
 
 ## Extension contracts
 
-The core exports the independent `ResourceResolver`, `ContentExtractor`, and `GenerationHook` contracts, plus their supporting types:
+The core exports independent `ResourcePreparer`, `ResourceResolver`, `ContentExtractor`, and `GenerationHook` contracts, plus their supporting types:
 
+- A preparer synchronously selects source references, then receives its selected references as one asynchronous-capable batch. Its context supplies a Write Once-managed temporary working directory; prepared resources must remain inside it. One result can describe multiple roots, each associated with the references it serves; provider-specific values remain opaque to the core. Triggers should be fast, synchronous, and side-effect-free.
+- `PathResourceResolver` resolves a source reference to `ResolvedResourcePath`: a root, relative path, and optional metadata, never file contents. `ResourceContext` can carry preparation results to resolvers.
 - A resolver maps a source reference to a resource identity/location, text, and/or metadata.
 - An extractor selects whole-file text, a named fragment, a range, or another content shape from an already resolved resource.
 - A hook receives `HookContext` and returns either `{ text }` or `{ fullText }`.
 
-A plugin can contribute any combination of resolvers, extractors, and hooks through `PluginContribution`. Resolver and extractor selection uses descending priority followed by registration order. The v1 pipeline runs one `pre-write` hook per generated block, selecting by priority and then registration order; hooks are not chained.
+A plugin can contribute any combination of preparers, resolvers, extractors, and hooks through `PluginContribution`. Resolver and extractor selection uses descending priority followed by registration order. The v1 pipeline runs one `pre-write` hook per generated block, selecting by priority and then registration order; hooks are not chained.
 
 The public contracts include marker spans, source coordinates, selectors, resource metadata, and structured diagnostics. Built-in resolver/extractor implementations and pipeline orchestration are not exported from the package root.
 

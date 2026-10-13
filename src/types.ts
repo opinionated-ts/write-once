@@ -118,11 +118,72 @@ export interface PluginContribution<
   Resolver = ResourceResolver,
   Extractor = ContentExtractor,
   Hook = GenerationHook,
+  Preparer = ResourcePreparer,
 > {
   name?: string;
+  preparers?: readonly Preparer[];
   resolvers?: readonly Resolver[];
   extractors?: readonly Extractor[];
   hooks?: readonly Hook[];
+}
+
+/** A source reference and the destination context in which it was declared. */
+export interface SourceReferenceContext {
+  source: string;
+  selector: SourceSelector;
+  destination: string;
+  marker: MarkerBlock;
+}
+
+/** Context supplied to a preparer for one generation run. */
+export interface ResourcePreparationContext {
+  cwd: string;
+  /** A Write Once-managed directory reserved for this preparer's resources. */
+  workingDirectory: string;
+}
+
+/** A resource root materialized by a preparer for the references it serves. */
+export interface PreparedResource {
+  root: string;
+  references: readonly SourceReferenceContext[];
+  metadata?: Readonly<Record<string, unknown>>;
+}
+
+/** Resources and opaque provider data returned by one preparation batch. */
+export interface ResourcePreparationResult {
+  resources: readonly PreparedResource[];
+  /** Provider-specific state remains opaque to the core. */
+  value?: unknown;
+}
+
+/**
+ * Selects source references synchronously, then prepares their resources in a
+ * single async-capable batch per generation run.
+ */
+export interface ResourcePreparer {
+  id: string;
+  canPrepare(reference: SourceReferenceContext, context: ResourceContext): boolean;
+  prepare(
+    references: readonly SourceReferenceContext[],
+    context: ResourcePreparationContext,
+  ): ResourcePreparationResult | Promise<ResourcePreparationResult>;
+}
+
+/** A resource location returned by path-based resolvers; it contains no text. */
+export interface ResolvedResourcePath {
+  root: string;
+  path: string;
+  metadata?: Readonly<Record<string, unknown>>;
+}
+
+/** Resolves a source reference to a path without reading its file contents. */
+export interface PathResourceResolver {
+  id: string;
+  canResolve(source: string, context: ResourceContext): boolean;
+  resolve(
+    source: string,
+    context: ResourceContext,
+  ): ResolvedResourcePath | Promise<ResolvedResourcePath>;
 }
 
 /**
@@ -144,6 +205,7 @@ export interface ResourceContext {
   cwd: string;
   destination?: string;
   metadata?: Readonly<Record<string, unknown>>;
+  preparations?: readonly ResourcePreparationResult[];
 }
 
 /** The selected text and its location within the source resource, when known. */

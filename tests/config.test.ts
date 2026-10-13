@@ -1,7 +1,7 @@
 import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { describe, expect, it } from "vitest";
 
-import type { ContentExtractor, GenerationHook, ResourceResolver } from "@/types";
+import type { ContentExtractor, GenerationHook, ResourcePreparer, ResourceResolver } from "@/types";
 
 import { defineConfig, validateConfig } from "@/config";
 
@@ -9,6 +9,11 @@ const resolver: ResourceResolver = {
   id: "local",
   canResolve: () => true,
   resolve: () => ({ id: "local:a", location: "/project/a", text: "text" }),
+};
+const preparer: ResourcePreparer = {
+  id: "prepare-local",
+  canPrepare: () => true,
+  prepare: async () => ({ resources: [] }),
 };
 const extractor: ContentExtractor = {
   id: "text",
@@ -35,6 +40,7 @@ describe("validateConfig", () => {
       include: ["**/*.md"],
       exclude: ["generated/**"],
       respectGitignore: true,
+      preparers: [],
       resolvers: [],
       extractors: [],
       hooks: [],
@@ -53,14 +59,15 @@ describe("validateConfig", () => {
     }
   });
 
-  it("accepts independent resolver, extractor, and hook contributions", () => {
+  it("accepts independent preparer, resolver, extractor, and hook contributions", () => {
     const result = validateConfig(
-      { resolvers: [resolver], extractors: [extractor], hooks: [hook] },
+      { preparers: [preparer], resolvers: [resolver], extractors: [extractor], hooks: [hook] },
       "/repo",
     );
 
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
+      expect(result.value.preparers).toEqual([preparer]);
       expect(result.value.resolvers).toEqual([resolver]);
       expect(result.value.extractors).toEqual([extractor]);
       expect(result.value.hooks).toEqual([hook]);
@@ -74,6 +81,10 @@ describe("validateConfig", () => {
     [{ exclude: "dist/**" }, '"exclude" must be an array of non-empty pattern strings.'],
     [{ respectGitignore: "false" }, '"respectGitignore" must be a boolean.'],
     [
+      { preparers: [{}] },
+      '"preparers" must contain preparer objects with id, canPrepare, and prepare.',
+    ],
+    [
       { resolvers: [{}] },
       '"resolvers" must contain resolver objects with id, canResolve, and resolve.',
     ],
@@ -82,6 +93,7 @@ describe("validateConfig", () => {
       '"extractors" must contain extractor objects with id, canExtract, and extract.',
     ],
     [{ hooks: [{}] }, '"hooks" must contain hook objects with id, stage, and run.'],
+    [{ preparers: [preparer, preparer] }, "unique within each capability category"],
     [{ resolvers: [resolver, resolver] }, "unique within each capability category"],
   ])("rejects invalid config %#", (config, message) => {
     const result = validateConfig(config, "/repo");

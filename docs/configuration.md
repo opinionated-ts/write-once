@@ -10,7 +10,7 @@ Automatic discovery fails if more than one supported `write-once.config.*` file 
 
 ## TypeScript configuration
 
-TypeScript is the recommended format because it supports the complete configuration API, including programmatic extensions (`resolvers`, `extractors`, and `hooks`).
+TypeScript is the recommended format because it supports the complete configuration API, including programmatic extensions (`preparers`, `resolvers`, `extractors`, and `hooks`).
 
 Use `defineConfig` for editor autocomplete and type checking:
 
@@ -66,7 +66,7 @@ JSON and YAML are supported for static configuration, but cannot express executa
 - If `include` is omitted, the default is `**/*`.
 - If `exclude` is omitted, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable those defaults.
 - `respectGitignore` defaults to `true` and applies root and nested `.gitignore` rules during discovery. Set it to `false` to ignore `.gitignore` files; `include` and `exclude` still apply.
-- `resolvers`, `extractors`, and `hooks` are programmatic extension points available in TypeScript or JavaScript config files.
+- `preparers`, `resolvers`, `extractors`, and `hooks` are programmatic extension points available in TypeScript or JavaScript config files.
 
 ## Security
 

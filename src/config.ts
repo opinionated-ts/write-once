@@ -2,7 +2,12 @@ import { error, ok } from "@opinionated-ts/result";
 import { createDefineConfig } from "c12";
 import { resolve } from "node:path";
 
-import type { ContentExtractor, GenerationHook, ResourceResolver } from "./types.js";
+import type {
+  ContentExtractor,
+  GenerationHook,
+  ResourcePreparer,
+  ResourceResolver,
+} from "./types.js";
 
 import { ConfigValidationError } from "./errors/config-validation-error.js";
 
@@ -13,6 +18,7 @@ export interface UserConfig {
   include?: readonly string[];
   exclude?: readonly string[];
   respectGitignore?: boolean;
+  preparers?: readonly ResourcePreparer[];
   resolvers?: readonly ResourceResolver[];
   extractors?: readonly ContentExtractor[];
   hooks?: readonly GenerationHook[];
@@ -37,6 +43,7 @@ export interface NormalizedWriteOnceConfig {
   include: readonly string[];
   exclude: readonly string[];
   respectGitignore: boolean;
+  preparers: readonly ResourcePreparer[];
   resolvers: readonly ResourceResolver[];
   extractors: readonly ContentExtractor[];
   hooks: readonly GenerationHook[];
@@ -62,6 +69,16 @@ function isResolver(value: unknown): value is ResourceResolver {
     value["id"].length > 0 &&
     typeof value["canResolve"] === "function" &&
     typeof value["resolve"] === "function"
+  );
+}
+
+function isPreparer(value: unknown): value is ResourcePreparer {
+  return (
+    isRecord(value) &&
+    typeof value["id"] === "string" &&
+    value["id"].length > 0 &&
+    typeof value["canPrepare"] === "function" &&
+    typeof value["prepare"] === "function"
   );
 }
 
@@ -126,6 +143,14 @@ export function validateConfig(
   const includePatterns = include ?? ["**/*"];
   const excludePatterns = exclude ?? DEFAULT_EXCLUDE_PATTERNS;
 
+  const preparers = value["preparers"] ?? [];
+  if (!Array.isArray(preparers) || !preparers.every(isPreparer)) {
+    return invalid(
+      '"preparers" must contain preparer objects with id, canPrepare, and prepare.',
+      "preparers",
+    );
+  }
+
   const resolvers = value["resolvers"] ?? [];
   if (!Array.isArray(resolvers) || !resolvers.every(isResolver)) {
     return invalid(
@@ -147,7 +172,12 @@ export function validateConfig(
     return invalid('"hooks" must contain hook objects with id, stage, and run.', "hooks");
   }
 
-  if (hasDuplicateIds(resolvers) || hasDuplicateIds(extractors) || hasDuplicateIds(hooks)) {
+  if (
+    hasDuplicateIds(preparers) ||
+    hasDuplicateIds(resolvers) ||
+    hasDuplicateIds(extractors) ||
+    hasDuplicateIds(hooks)
+  ) {
     return invalid("Identifiers must be unique within each capability category.");
   }
 
@@ -156,6 +186,7 @@ export function validateConfig(
     include: [...includePatterns],
     exclude: [...excludePatterns],
     respectGitignore: respectGitignore ?? true,
+    preparers: [...preparers],
     resolvers: [...resolvers],
     extractors: [...extractors],
     hooks: [...hooks],

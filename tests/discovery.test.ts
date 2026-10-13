@@ -25,6 +25,7 @@ function config(
     include,
     exclude,
     respectGitignore: true,
+    preparers: [],
     resolvers: [],
     extractors: [],
     hooks: [],

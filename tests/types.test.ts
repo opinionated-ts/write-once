@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import type {
   GenerationHook,
   HookOutput,
+  PathResourceResolver,
   PluginContribution,
+  ResourcePreparer,
   ResolvedResource,
+  ResolvedResourcePath,
   SourceSelector,
   TextSpan,
 } from "@/index";
@@ -44,6 +47,30 @@ describe("public types", () => {
 
     expect(textResource.text).toBe("# Readme");
     expect(metadataResource.metadata["revision"]).toBe("main");
+  });
+
+  it("models batched preparation and path-based resources", () => {
+    const preparer: ResourcePreparer = {
+      id: "repository",
+      canPrepare: (reference) => reference.source.startsWith("repo:"),
+      prepare: async (_references, context) => ({
+        resources: [{ root: context.workingDirectory, references: [] }],
+        value: { cacheKey: "opaque-to-core" },
+      }),
+    };
+    const resource: ResolvedResourcePath = {
+      root: "/tmp/write-once/repository",
+      path: "docs/guide.md",
+    };
+    const resolver: PathResourceResolver = {
+      id: "prepared-resource",
+      canResolve: (source) => source.startsWith("repo:"),
+      resolve: () => resource,
+    };
+
+    expect(preparer.id).toBe("repository");
+    expect(resolver.resolve("repo:docs/guide.md", { cwd: "/project" })).toEqual(resource);
+    expect(resource).toEqual({ root: "/tmp/write-once/repository", path: "docs/guide.md" });
   });
 
   it("allows plugins to contribute any combination of capabilities", () => {
