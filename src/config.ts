@@ -18,6 +18,10 @@ export interface UserConfig {
   include?: readonly string[];
   exclude?: readonly string[];
   respectGitignore?: boolean;
+  /** Maximum concurrent pipeline operations. Defaults to unlimited. */
+  maxConcurrency?: number;
+  /** Approximate retained source-content budget in MiB. Defaults to 256 MiB. */
+  memoryBudgetMiB?: number;
   preparers?: readonly ResourcePreparer[];
   resolvers?: readonly ResourceResolver[];
   extractors?: readonly ContentExtractor[];
@@ -36,6 +40,8 @@ export interface WriteOnceJsonConfig {
   include?: readonly string[];
   exclude?: readonly string[];
   respectGitignore?: boolean;
+  maxConcurrency?: number;
+  memoryBudgetMiB?: number;
 }
 
 export interface NormalizedWriteOnceConfig {
@@ -43,6 +49,8 @@ export interface NormalizedWriteOnceConfig {
   include: readonly string[];
   exclude: readonly string[];
   respectGitignore: boolean;
+  maxConcurrency: number;
+  memoryBudgetMiB: number;
   preparers: readonly ResourcePreparer[];
   resolvers: readonly ResourceResolver[];
   extractors: readonly ContentExtractor[];
@@ -122,6 +130,8 @@ export function validateConfig(
   const include = value["include"];
   const exclude = value["exclude"];
   const respectGitignore = value["respectGitignore"];
+  const maxConcurrency = value["maxConcurrency"];
+  const memoryBudgetMiB = value["memoryBudgetMiB"];
 
   if (root !== undefined && (typeof root !== "string" || root.trim().length === 0)) {
     return invalid('"root" must be a non-empty path string.', "root");
@@ -142,6 +152,23 @@ export function validateConfig(
   }
   if (respectGitignore !== undefined && typeof respectGitignore !== "boolean") {
     return invalid('"respectGitignore" must be a boolean.', "respectGitignore");
+  }
+
+  if (
+    maxConcurrency !== undefined &&
+    (typeof maxConcurrency !== "number" ||
+      !Number.isSafeInteger(maxConcurrency) ||
+      maxConcurrency < 1)
+  ) {
+    return invalid(`"maxConcurrency" must be a positive safe integer.`, "maxConcurrency");
+  }
+  if (
+    memoryBudgetMiB !== undefined &&
+    (typeof memoryBudgetMiB !== "number" ||
+      !Number.isFinite(memoryBudgetMiB) ||
+      memoryBudgetMiB <= 0)
+  ) {
+    return invalid(`"memoryBudgetMiB" must be a positive finite number.`, "memoryBudgetMiB");
   }
 
   const includePatterns = include ?? ["**/*"];
@@ -190,6 +217,8 @@ export function validateConfig(
     include: [...includePatterns],
     exclude: [...excludePatterns],
     respectGitignore: respectGitignore ?? true,
+    maxConcurrency: typeof maxConcurrency === "number" ? maxConcurrency : Number.POSITIVE_INFINITY,
+    memoryBudgetMiB: typeof memoryBudgetMiB === "number" ? memoryBudgetMiB : 256,
     preparers: [...preparers],
     resolvers: [...resolvers],
     extractors: [...extractors],

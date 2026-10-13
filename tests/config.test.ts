@@ -40,6 +40,8 @@ describe("validateConfig", () => {
       include: ["**/*.md"],
       exclude: ["generated/**"],
       respectGitignore: true,
+      maxConcurrency: Number.POSITIVE_INFINITY,
+      memoryBudgetMiB: 256,
       preparers: [],
       resolvers: [],
       extractors: [],
@@ -80,6 +82,8 @@ describe("validateConfig", () => {
     [{ include: [""] }, '"include" must be an array of non-empty pattern strings.'],
     [{ exclude: "dist/**" }, '"exclude" must be an array of non-empty pattern strings.'],
     [{ respectGitignore: "false" }, '"respectGitignore" must be a boolean.'],
+    [{ maxConcurrency: 0 }, '"maxConcurrency" must be a positive safe integer.'],
+    [{ memoryBudgetMiB: 0 }, '"memoryBudgetMiB" must be a positive finite number.'],
     [
       { preparers: [{}] },
       '"preparers" must contain preparer objects with id, canPrepare, and prepare.',

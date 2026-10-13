@@ -25,6 +25,8 @@ function config(
     include,
     exclude,
     respectGitignore: true,
+    maxConcurrency: Number.POSITIVE_INFINITY,
+    memoryBudgetMiB: 256,
     preparers: [],
     resolvers: [],
     extractors: [],

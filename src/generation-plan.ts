@@ -11,12 +11,13 @@ import type {
   PreparedResourceBatch,
   ResourceResolver,
   ResolvedContent,
-  ResolvedResource,
+  ResourceContext,
   SourceReferenceContext,
   SourceSelector,
   TextSpan,
 } from "./types.js";
 
+import { mapConcurrent } from "./async-pool.js";
 import { ContentExtractionError } from "./errors/content-extraction-error.js";
 import { namedFragmentExtractor } from "./extractors/named-fragment-extractor.js";
 import { rangeExtractor } from "./extractors/range-extractor.js";
@@ -33,10 +34,17 @@ export interface PlanDestinationOptions {
   scan?: DestinationScan;
   preparations?: readonly PreparedResourceBatch[];
   reader?: ResourceReader;
+  resolved?: ReadonlyMap<string, ResolvedReference>;
 }
 
 export interface DestinationScan {
   references: SourceReferenceContext[];
+}
+
+export interface ResolvedReference {
+  resolver: ResourceResolver;
+  resource: Awaited<ReturnType<typeof normalizeResolvedResource>>;
+  context: ResourceContext;
 }
 
 export interface PlannedReplacement {
@@ -205,57 +213,98 @@ function validSpan(span: TextSpan, length: number): boolean {
   );
 }
 
+function referenceKey(reference: SourceReferenceContext): string {
+  return reference.destination + "\0" + reference.marker.span.start + "\0" + reference.source;
+}
+
+export async function resolveSourceReferences(
+  references: readonly SourceReferenceContext[],
+  config: NormalizedWriteOnceConfig,
+  preparations: readonly PreparedResourceBatch[],
+): Promise<{ resolved: Map<string, ResolvedReference>; diagnostics: Diagnostic[] }> {
+  const diagnostics: Diagnostic[] = [];
+  const resolved = new Map<string, ResolvedReference>();
+  const resolvers = [...config.resolvers, localSourceResolver];
+
+  const outcomes = await mapConcurrent(references, config.maxConcurrency, async (reference) => {
+    const { source, destination, marker } = reference;
+    const relevantPreparations = preparations.filter((preparation) =>
+      preparation.references.some((assigned) => referenceKey(assigned) === referenceKey(reference)),
+    );
+    const context: ResourceContext = {
+      cwd: config.root,
+      destination,
+      reference,
+      preparations: relevantPreparations,
+    };
+    let resolver: ResourceResolver | undefined;
+    try {
+      resolver = selectResolver(resolvers, source, context);
+      if (resolver === undefined) {
+        return {
+          key: referenceKey(reference),
+          diagnostic: diagnosticError(
+            "resolve",
+            'No resolver supports source "' + source + '".',
+            destination,
+            marker,
+          ),
+        };
+      }
+      const result = await resolver.resolve(source, context);
+      const normalized = await normalizeResolvedResource(result, source, resolver.id, context);
+      return {
+        key: referenceKey(reference),
+        value: { resolver, resource: normalized, context } satisfies ResolvedReference,
+      };
+    } catch (cause) {
+      return {
+        key: referenceKey(reference),
+        diagnostic: diagnosticError(
+          "resolve",
+          'Resolver "' +
+            (resolver?.id ?? "selection") +
+            '" could not resolve source "' +
+            source +
+            '".',
+          destination,
+          marker,
+          cause,
+        ),
+      };
+    }
+  });
+
+  for (const outcome of outcomes) {
+    if ("value" in outcome && outcome.value !== undefined) {
+      resolved.set(outcome.key, outcome.value);
+    } else if ("diagnostic" in outcome && outcome.diagnostic !== undefined) {
+      diagnostics.push(outcome.diagnostic.error);
+    }
+  }
+  return { resolved, diagnostics };
+}
+
 async function planBlock(
   destination: string,
   text: string,
   reference: SourceReferenceContext,
   config: NormalizedWriteOnceConfig,
-  preparations: readonly PreparedResourceBatch[],
   reader: ResourceReader,
+  resolvedReference: ResolvedReference,
 ): Promise<ReturnType<typeof ok<PlannedReplacement>> | ReturnType<typeof diagnosticError>> {
   const { source, selector, marker } = reference;
-  const relevantPreparations = preparations.filter((preparation) =>
-    preparation.references.some(
-      (assigned) =>
-        assigned.destination === reference.destination &&
-        assigned.marker.span.start === reference.marker.span.start &&
-        assigned.source === reference.source,
-    ),
-  );
-  const context = { cwd: config.root, destination, reference, preparations: relevantPreparations };
-  const resolvers = [...config.resolvers, localSourceResolver];
-  let resolver: ResourceResolver | undefined;
-  let resolved: ResolvedResource;
-  let resource: ResolvedContent;
-
+  const { resolver, resource: normalized, context } = resolvedReference;
+  let resource: Awaited<ReturnType<ResourceReader["read"]>>;
   try {
-    resolver = selectResolver(resolvers, source, context);
-    if (resolver === undefined) {
-      return diagnosticError(
-        "resolve",
-        `No resolver supports source "${source}".`,
-        destination,
-        marker,
-      );
-    }
-    resolved = await resolver.resolve(source, context);
-  } catch (cause) {
-    return diagnosticError(
-      "resolve",
-      `Resolver "${resolver?.id ?? "selection"}" could not resolve source "${source}".`,
-      destination,
-      marker,
-      cause,
-    );
-  }
-
-  try {
-    const normalized = await normalizeResolvedResource(resolved, source, resolver.id, context);
     resource = await reader.read(normalized, source, resolver.id, context);
   } catch (cause) {
     return diagnosticError(
       "resolve",
-      `Resolver "${resolver.id}" returned an unusable path for source "${source}": ${cause instanceof Error ? cause.message : String(cause)}`,
+      'Could not load source "' +
+        source +
+        '": ' +
+        (cause instanceof Error ? cause.message : String(cause)),
       destination,
       marker,
       cause,
@@ -372,13 +421,44 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
   }
 
   const preparations = options.preparations ?? [];
-  const reader = options.reader ?? createResourceReader();
+  const ownsReader = options.reader === undefined;
+  const reader = options.reader ?? createResourceReader(undefined, config.memoryBudgetMiB);
+  const resolvedResult =
+    options.resolved === undefined
+      ? await resolveSourceReferences(scan.value.references, config, preparations)
+      : { resolved: options.resolved, diagnostics: [] as Diagnostic[] };
+  if (resolvedResult.diagnostics.length > 0) {
+    if (ownsReader) await reader.clear();
+    return error(resolvedResult.diagnostics[0]!);
+  }
+  if (options.resolved === undefined) {
+    const consumers = new Map<string, number>();
+    for (const value of resolvedResult.resolved.values()) {
+      consumers.set(value.resource.id, (consumers.get(value.resource.id) ?? 0) + 1);
+    }
+    reader.setConsumers(consumers);
+  }
   const replacements: PlannedReplacement[] = [];
   for (const reference of scan.value.references) {
+    const resolvedReference = resolvedResult.resolved.get(referenceKey(reference));
+    if (resolvedReference === undefined) continue;
     // Preserve source-order hook execution; hooks may have observable side effects.
     // oxlint-disable-next-line no-await-in-loop
-    const planned = await planBlock(destination, text, reference, config, preparations, reader);
-    if (!planned.ok) return error(planned.error);
+    const planned = await planBlock(
+      destination,
+      text,
+      reference,
+      config,
+      reader,
+      resolvedReference,
+    );
+    // oxlint-disable-next-line no-await-in-loop
+    await reader.release(resolvedReference.resource.id);
+    if (!planned.ok) {
+      // oxlint-disable-next-line no-await-in-loop
+      if (ownsReader) await reader.clear();
+      return error(planned.error);
+    }
     replacements.push(planned.value);
   }
 
@@ -390,6 +470,8 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
       current.span.start < previous.span.end ||
       (current.span.start === previous.span.start && current.span.end === previous.span.end)
     ) {
+      // oxlint-disable-next-line no-await-in-loop
+      if (ownsReader) await reader.clear();
       return error({
         severity: "error" as const,
         stage: "marker" as const,
@@ -409,5 +491,6 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
       outputText.slice(replacement.span.end);
   }
 
+  if (ownsReader) await reader.clear();
   return ok({ destination, originalText: text, outputText, replacements });
 }

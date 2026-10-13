@@ -10,6 +10,7 @@ import type {
   SourceReferenceContext,
 } from "./types.js";
 
+import { mapConcurrent } from "./async-pool.js";
 import { assignPreparerReferences, PreparerTriggerError } from "./preparer-selection.js";
 
 export interface PreparedSourceResources {
@@ -149,33 +150,37 @@ export async function prepareSourceReferences(
     const baseDirectory = join(tmpdir(), "write-once");
     await mkdir(baseDirectory, { recursive: true });
 
-    // Preparation remains sequential so each provider failure has deterministic cleanup.
-    // oxlint-disable no-await-in-loop
-    for (const { preparer, references: batchReferences } of assignments.batches) {
-      let workingDirectory: string;
-      try {
-        workingDirectory = await mkdtemp(join(baseDirectory, `${safeDirectoryName(preparer.id)}-`));
-        workingDirectories.push(workingDirectory);
-        const result = await preparer.prepare(batchReferences, {
-          cwd: config.root,
-          workingDirectory,
-        });
-        preparations.push({
-          preparerId: preparer.id,
-          workingDirectory,
-          references: batchReferences,
-          result: validatePreparationResult(result, batchReferences, workingDirectory),
-        });
-      } catch (cause) {
-        throw new ResourcePreparationFailure(
-          preparer.id,
-          batchReferences,
-          `Preparer "${preparer.id}" failed for source(s) ${batchReferences.map((reference) => reference.source).join(", ")}: ${cause instanceof Error ? cause.message : String(cause)}`,
-          cause,
-        );
-      }
-    }
-    // oxlint-enable no-await-in-loop
+    const batches = await mapConcurrent(
+      assignments.batches,
+      config.maxConcurrency,
+      async ({ preparer, references: batchReferences }) => {
+        let workingDirectory: string;
+        try {
+          workingDirectory = await mkdtemp(
+            join(baseDirectory, `${safeDirectoryName(preparer.id)}-`),
+          );
+          workingDirectories.push(workingDirectory);
+          const result = await preparer.prepare(batchReferences, {
+            cwd: config.root,
+            workingDirectory,
+          });
+          return {
+            preparerId: preparer.id,
+            workingDirectory,
+            references: batchReferences,
+            result: validatePreparationResult(result, batchReferences, workingDirectory),
+          };
+        } catch (cause) {
+          throw new ResourcePreparationFailure(
+            preparer.id,
+            batchReferences,
+            `Preparer "${preparer.id}" failed for source(s) ${batchReferences.map((reference) => reference.source).join(", ")}: ${cause instanceof Error ? cause.message : String(cause)}`,
+            cause,
+          );
+        }
+      },
+    );
+    preparations.push(...batches);
 
     return { preparations, workingDirectories };
   } catch (cause) {

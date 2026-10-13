@@ -9,5 +9,7 @@ export const writeOnceConfigSchema = z
     include: z.array(z.string().refine((value) => value.trim().length > 0)).optional(),
     exclude: z.array(z.string().refine((value) => value.trim().length > 0)).optional(),
     respectGitignore: z.boolean().optional(),
+    maxConcurrency: z.number().int().positive().optional(),
+    memoryBudgetMiB: z.number().positive().finite().optional(),
   })
   .passthrough();

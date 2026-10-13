@@ -74,6 +74,47 @@ describe("createResourceReader", () => {
     expect(readText).toHaveBeenCalledTimes(2);
   });
 
+  it("spills inactive content to respect a small budget and releases it after the final consumer", async () => {
+    const readText = vi.fn(async (path: string) => "content:" + path);
+    const reader = createResourceReader(readText, 0.00001);
+    const first = resource("file:/project/first.md", "/project/first.md");
+    const second = resource("file:/project/second.md", "/project/second.md");
+    reader.setConsumers(
+      new Map([
+        [first.id, 2],
+        [second.id, 1],
+      ]),
+    );
+
+    const firstRead = await reader.read(first, "first", "resolver", context);
+    await reader.release(first.id);
+    const secondRead = await reader.read(second, "second", "resolver", context);
+    await reader.release(second.id);
+    const firstAgain = await reader.read(first, "first", "resolver", context);
+
+    expect(firstAgain.text).toBe(firstRead.text);
+    expect(secondRead.text).toContain("second.md");
+    expect(readText).toHaveBeenCalledTimes(2);
+
+    await reader.release(first.id);
+    await reader.clear();
+  });
+
+  it("preloads an oversized file without rereading the original source", async () => {
+    const readText = vi.fn(async () => "a source larger than the configured budget");
+    const reader = createResourceReader(readText, 0.00001);
+    const source = resource("file:/project/large.md", "/project/large.md");
+    reader.setConsumers(new Map([[source.id, 1]]));
+
+    await reader.preload(source, "large", "resolver", context);
+    const loaded = await reader.read(source, "large", "resolver", context);
+
+    expect(loaded.text).toBe("a source larger than the configured budget");
+    expect(readText).toHaveBeenCalledTimes(1);
+    await reader.release(source.id);
+    await reader.clear();
+  });
+
   it("retries failed reads and clears cached content when requested", async () => {
     const readText = vi
       .fn<() => Promise<string>>()
@@ -87,7 +128,7 @@ describe("createResourceReader", () => {
       code: "SOURCE_RESOLUTION_ERROR",
     });
     expect((await reader.read(source, "source", "resolver", context)).text).toBe("recovered");
-    reader.clear();
+    await reader.clear();
     expect((await reader.read(source, "source", "resolver", context)).text).toBe("after clear");
     expect(readText).toHaveBeenCalledTimes(3);
   });

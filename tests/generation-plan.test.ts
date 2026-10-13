@@ -1,14 +1,15 @@
 import { isFailure, isSuccess } from "@opinionated-ts/result";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { NormalizedWriteOnceConfig } from "@/config";
-import type { GenerationHook } from "@/types";
+import type { GenerationHook, ResourceResolver } from "@/types";
 
 import { validateConfig } from "@/config";
 import { planDestinationFile } from "@/generation-plan";
+import { createResourceReader } from "@/resource-reader";
 
 const directories: string[] = [];
 
@@ -138,6 +139,83 @@ describe("planDestinationFile", () => {
     });
     expect(isFailure(failedHook)).toBe(true);
     if (isFailure(failedHook)) expect(failedHook.error.stage).toBe("hook");
+  });
+
+  it("bounds concurrent resolution and keeps resolved results in reference order", async () => {
+    const root = await createProject();
+    await writeFile(join(root, "source.md"), "shared content", "utf8");
+    let active = 0;
+    let maximumActive = 0;
+    const resolver: ResourceResolver = {
+      id: "virtual",
+      canResolve: (source) => source.startsWith("virtual:"),
+      async resolve() {
+        active += 1;
+        maximumActive = Math.max(maximumActive, active);
+        await new Promise<void>((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+        return { root, path: "source.md" };
+      },
+    };
+    const text = [
+      'fragment source="virtual:first"',
+      "old first",
+      "/fragment",
+      'fragment source="virtual:second"',
+      "old second",
+      "/fragment",
+      'fragment source="virtual:third"',
+      "old third",
+      "/fragment",
+    ].join("\n");
+
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text,
+      config: normalized(root, { maxConcurrency: 2, resolvers: [resolver] }),
+    });
+
+    expect(isSuccess(result)).toBe(true);
+    expect(maximumActive).toBe(2);
+    if (isSuccess(result)) {
+      expect(result.value.outputText.match(/shared content/g)).toHaveLength(3);
+    }
+  });
+
+  it("loads a shared source once for multiple selectors and releases it after the final consumer", async () => {
+    const root = await createProject();
+    const source = join(root, "source.md");
+    await writeFile(
+      source,
+      'fragment name="first"\nalpha\n/fragment\nfragment name="second"\nbeta\n/fragment',
+      "utf8",
+    );
+    const readText = vi.fn(async () => readFile(source, "utf8"));
+    const reader = createResourceReader(readText);
+    const destination = join(root, "README.md");
+    const text = [
+      'fragment source="./source.md" name="first"',
+      "old one",
+      "/fragment",
+      'fragment source="./source.md" name="second"',
+      "old two",
+      "/fragment",
+    ].join("\n");
+
+    const result = await planDestinationFile({
+      destination,
+      text,
+      config: normalized(root),
+      reader,
+    });
+
+    expect(isSuccess(result)).toBe(true);
+    expect(readText).toHaveBeenCalledTimes(1);
+    if (isSuccess(result)) {
+      expect(result.value.outputText).toContain("alpha");
+      expect(result.value.outputText).toContain("beta");
+    }
+    await reader.clear();
   });
 
   it("rejects malformed and nested generated destinations before writing", async () => {
