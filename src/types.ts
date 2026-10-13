@@ -171,17 +171,17 @@ export interface ResourcePreparer {
 
 /** A resolved resource location. Resolver output never contains file contents. */
 export interface ResolvedResource {
-  root: string;
-  path: string;
-  metadata?: Readonly<Record<string, unknown>>;
+  readonly root: string;
+  readonly path: string;
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 /** A resolved resource after the core has loaded its contents. */
-export interface ResolvedContent {
-  id: string;
-  location: string;
-  text: string;
-  metadata?: Readonly<Record<string, unknown>>;
+export interface ResolvedContent extends ResolvedResource {
+  readonly id: string;
+  readonly location: string;
+  /** Shared source text is immutable by contract and must not be changed by extractors. */
+  readonly text: string;
 }
 
 /** A preparer's opaque result paired with the references assigned to it. */
@@ -220,10 +220,10 @@ export interface ResourceResolver {
 }
 
 /**
- * Selects content from an already resolved resource.
+ * Selects content from a resolved resource with already-loaded, read-only text.
  *
- * Extractors do not acquire resources or write destination files. The first
- * compatible extractor in registration order is selected.
+ * Extractors must not mutate source text, perform resource I/O, or write destination
+ * files. The first compatible extractor in registration order is selected.
  */
 export interface ContentExtractor {
   id: string;

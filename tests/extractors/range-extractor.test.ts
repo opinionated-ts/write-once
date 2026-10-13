@@ -19,7 +19,13 @@ const range = (
 });
 
 function resource(text: string): ResolvedContent {
-  return { id: "file:source", location: "/project/source.txt", text };
+  return {
+    root: "/project",
+    path: "source.txt",
+    id: "file:source",
+    location: "/project/source.txt",
+    text,
+  };
 }
 
 describe("rangeExtractor", () => {

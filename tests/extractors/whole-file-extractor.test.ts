@@ -12,6 +12,8 @@ describe("wholeFileExtractor", () => {
     "preserves source text exactly: %j",
     (text) => {
       const resource: ResolvedContent = {
+        root: "/project",
+        path: "source.md",
         id: "local:source",
         location: "/project/source.md",
         text,
@@ -32,6 +34,8 @@ describe("wholeFileExtractor", () => {
 
   it("records end coordinates without normalizing newline styles", () => {
     const resource: ResolvedContent = {
+      root: "/project",
+      path: "source.md",
       id: "local:source",
       location: "/project/source.md",
       text: "one\r\ntwo\n",
@@ -46,14 +50,26 @@ describe("wholeFileExtractor", () => {
   it("only accepts whole-source selectors", () => {
     expect(
       wholeFileExtractor.canExtract(
-        { id: "local:source", location: "/project/source.md", text: "content" },
+        {
+          root: "/project",
+          path: "source.md",
+          id: "local:source",
+          location: "/project/source.md",
+          text: "content",
+        },
         whole,
         context,
       ),
     ).toBe(true);
     expect(
       wholeFileExtractor.canExtract(
-        { id: "local:source", location: "/project/source.md", text: "content" },
+        {
+          root: "/project",
+          path: "source.md",
+          id: "local:source",
+          location: "/project/source.md",
+          text: "content",
+        },
         { kind: "named", name: "intro" },
         context,
       ),

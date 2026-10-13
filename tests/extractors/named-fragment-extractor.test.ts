@@ -18,6 +18,8 @@ describe("namedFragmentExtractor", () => {
       "after",
     ].join("\r\n");
     const resource: ResolvedContent = {
+      root: "/project",
+      path: "source.md",
       id: "file:source",
       location: "/project/source.md",
       text,
@@ -42,6 +44,8 @@ describe("namedFragmentExtractor", () => {
 
   it("supports nested declarations and case-sensitive names", () => {
     const resource: ResolvedContent = {
+      root: "/project",
+      path: "source.md",
       id: "file:source",
       location: "/project/source.md",
       text: [
@@ -63,6 +67,8 @@ describe("namedFragmentExtractor", () => {
 
   it("reports missing declarations and duplicate names", () => {
     const missing: ResolvedContent = {
+      root: "/project",
+      path: "missing.md",
       id: "file:missing",
       location: "/project/missing.md",
       text: 'fragment name="present"\ncontent\n/fragment',
@@ -72,6 +78,8 @@ describe("namedFragmentExtractor", () => {
     );
 
     const duplicate: ResolvedContent = {
+      root: "/project",
+      path: "duplicate.md",
       id: "file:duplicate",
       location: "/project/duplicate.md",
       text: 'fragment name="intro"\na\n/fragment\nfragment name="intro"\nb\n/fragment',
@@ -83,6 +91,8 @@ describe("namedFragmentExtractor", () => {
 
   it("only accepts named selectors and requires text", () => {
     const resource: ResolvedContent = {
+      root: "/project",
+      path: "source.md",
       id: "file:source",
       location: "/project/source.md",
       text: "content",

@@ -53,6 +53,8 @@ export function createResourceReader(
       }
 
       return {
+        root: resource.root,
+        path: resource.path,
         id: resource.id,
         location: resource.location,
         text,
