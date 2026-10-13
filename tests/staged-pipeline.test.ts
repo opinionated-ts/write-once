@@ -127,6 +127,40 @@ export default {
     expect(await readFile(destination, "utf8")).toBe(original);
   });
 
+  it("does not write any destination when a later destination fails during planning", async () => {
+    const cwd = await createProject();
+    const firstDestination = join(cwd, "A.md");
+    const secondDestination = join(cwd, "B.md");
+    const firstOriginal = 'fragment source="./source.md"\nold A\n/fragment';
+    const secondOriginal = 'fragment source="./source.md"\nold B\n/fragment';
+    await writeFile(firstDestination, firstOriginal, "utf8");
+    await writeFile(secondDestination, secondOriginal, "utf8");
+    await writeFile(join(cwd, "source.md"), "new content", "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `export default {
+  include: ["*.md"],
+  hooks: [{
+    id: "fail-on-B",
+    stage: "pre-write",
+    run({ destination, content }) {
+      if (destination.endsWith("B.md")) throw new Error("intentional hook failure");
+      return { text: content };
+    },
+  }],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.stage === "hook")).toBe(true);
+    expect(await readFile(firstDestination, "utf8")).toBe(firstOriginal);
+    expect(await readFile(secondDestination, "utf8")).toBe(secondOriginal);
+  });
+
   it("preserves destinations and contextual errors when a selected resolver fails", async () => {
     const cwd = await createProject();
     const destination = join(cwd, "README.md");

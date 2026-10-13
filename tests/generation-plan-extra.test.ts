@@ -101,6 +101,51 @@ describe("generation plan edge cases", () => {
     }
   });
 
+  it("reports extractor failures with extraction-stage diagnostics", async () => {
+    const { root, config } = await setup();
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text: 'fragment source="./source.md"\nold\n/fragment',
+      config: {
+        ...config,
+        extractors: [
+          {
+            id: "broken-extractor",
+            canExtract: () => true,
+            extract: () => {
+              throw new Error("source format is invalid");
+            },
+          },
+        ],
+      },
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.stage).toBe("extract");
+      expect(result.error.message).toContain('Could not extract content from source "./source.md"');
+      expect(result.error.cause).toMatchObject({ message: "source format is invalid" });
+    }
+  });
+
+  it("rejects hooks that return neither a body nor a full replacement", async () => {
+    const { root, config } = await setup();
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text: 'fragment source="./source.md"\nold\n/fragment',
+      config: {
+        ...config,
+        hooks: [{ id: "invalid-output", stage: "pre-write", run: () => JSON.parse("null") }],
+      },
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.stage).toBe("hook");
+      expect(result.error.message).toBe("Hook returned an invalid replacement value.");
+    }
+  });
+
   it("awaits async hooks and rejects conflicting replacement scopes", async () => {
     const { root, config } = await setup();
     const destination = join(root, "README.md");

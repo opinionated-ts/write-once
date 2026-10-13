@@ -130,6 +130,40 @@ describe("discoverDestinationFiles", () => {
     expect(result.diagnostics).toMatchObject([{ severity: "error", stage: "discovery" }]);
   });
 
+  it("reports invalid exclude patterns instead of scanning", async () => {
+    const root = await createProject();
+    await writeFile(join(root, "README.md"), "readme", "utf8");
+
+    const result = await discoverDestinationFiles(config(root, ["**/*"], ["!README.md"]));
+
+    expect(result.files).toEqual([]);
+    expect(result.diagnostics).toMatchObject([
+      {
+        severity: "error",
+        stage: "discovery",
+        message: expect.stringContaining("Invalid exclude pattern"),
+      },
+    ]);
+  });
+
+  it("reports a .gitignore read failure and does not continue scanning that directory", async () => {
+    const root = await createProject();
+    await mkdir(join(root, ".gitignore"));
+    await writeFile(join(root, "README.md"), "readme", "utf8");
+
+    const result = await discoverDestinationFiles(config(root));
+
+    expect(result.files).toEqual([]);
+    expect(result.diagnostics).toMatchObject([
+      {
+        severity: "error",
+        stage: "discovery",
+        file: join(root, ".gitignore"),
+        message: expect.stringContaining("Cannot read .gitignore"),
+      },
+    ]);
+  });
+
   it("uses configured defaults without hiding dotfiles except for explicit default exclusions", async () => {
     const root = await createProject();
     await mkdir(join(root, ".git"));

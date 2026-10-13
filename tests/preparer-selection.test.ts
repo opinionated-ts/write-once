@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { MarkerBlock, ResourcePreparer, SourceReferenceContext } from "@/types";
 
-import { selectPreparer } from "@/preparer-selection";
+import { assignPreparerReferences, selectPreparer } from "@/preparer-selection";
 
 function referenceFor(source: string): SourceReferenceContext {
   const location = {
@@ -67,6 +67,22 @@ describe("selectPreparer", () => {
 
     expect(selected?.id).toBe("first-match");
     expect(calls).toEqual(["skip", "first-match"]);
+  });
+
+  it("keeps references unassigned when no preparer matches and omits empty batches", () => {
+    const preparer: ResourcePreparer = {
+      id: "repo-only",
+      canPrepare: () => false,
+      prepare: () => ({ resources: [] }),
+    };
+    const reference = referenceFor("./local.md");
+
+    const assignment = assignPreparerReferences([preparer], [reference], () => ({
+      cwd: "/project",
+    }));
+
+    expect(assignment.batches).toEqual([]);
+    expect(assignment.unassigned).toEqual([reference]);
   });
 
   it("leaves unmatched references available for resolver-only handling", () => {

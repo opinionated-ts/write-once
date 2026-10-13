@@ -97,6 +97,69 @@ export default {
     expect(await readFile(second, "utf8")).toContain("prepared content");
   });
 
+  it("rejects prepared resources whose roots escape the assigned working directory", async () => {
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    const original = 'fragment source="repo:outside"\nold\n/fragment';
+    await writeFile(destination, original, "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `export default {
+  include: ["README.md"],
+  preparers: [{
+    id: "repo",
+    canPrepare: () => true,
+    prepare: async (references) => ({
+      resources: [{ root: "../../outside", references }],
+    }),
+  }],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.diagnostics).toMatchObject([
+      {
+        severity: "error",
+        stage: "prepare",
+        message: expect.stringContaining("must remain inside"),
+      },
+    ]);
+    expect(await readFile(destination, "utf8")).toBe(original);
+  });
+
+  it("rejects prepared resources that claim references assigned to another preparer", async () => {
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    const original = 'fragment source="repo:owned"\nold\n/fragment';
+    await writeFile(destination, original, "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `export default {
+  include: ["README.md"],
+  preparers: [{
+    id: "repo",
+    canPrepare: () => true,
+    prepare: async (references, context) => ({
+      resources: [{ root: context.workingDirectory, references: references.map((reference) => ({ ...reference, source: "repo:forged" })) }],
+    }),
+  }],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.diagnostics[0]?.stage).toBe("prepare");
+    expect(result.diagnostics[0]?.message).toContain("not assigned to this preparer");
+    expect(await readFile(destination, "utf8")).toBe(original);
+  });
+
   it("fails generation and preserves destinations when a selected preparer fails", async () => {
     const cwd = await createProject();
     const destination = join(cwd, "README.md");

@@ -130,6 +130,27 @@ describe("parseMarkerLine", () => {
     });
   });
 
+  it("rejects empty semantic values, unquoted values, and duplicate selector attributes", () => {
+    const emptySource = parseMarkerLine('fragment source=""');
+    const unquotedSource = parseMarkerLine("fragment source=./source.md");
+    const duplicateName = parseMarkerLine('fragment name="one" name="two"');
+    const duplicateRange = parseMarkerLine('fragment source="./a" range="1:1-1:2" range="2:1-2:2"');
+    const unsafeRange = parseMarkerLine('fragment source="./a" range="1:1-9007199254740992:1"');
+
+    expect(isFailure(emptySource)).toBe(true);
+    expect(isSuccess(unquotedSource)).toBe(true);
+    expect(isFailure(duplicateName)).toBe(true);
+    expect(isFailure(duplicateRange)).toBe(true);
+    expect(isFailure(unsafeRange)).toBe(true);
+    if (isSuccess(unquotedSource)) expect(unquotedSource.value).toBeUndefined();
+    if (isFailure(emptySource))
+      expect(emptySource.error.context?.public).toMatchObject({ attribute: "source" });
+    if (isFailure(duplicateName))
+      expect(duplicateName.error.context?.public).toMatchObject({ attribute: "name" });
+    if (isFailure(duplicateRange))
+      expect(duplicateRange.error.context?.public).toMatchObject({ attribute: "range" });
+  });
+
   it("returns undefined when a line contains no marker", () => {
     const result = parseMarkerLine("ordinary text without a marker token");
 

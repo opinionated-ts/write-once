@@ -5,6 +5,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    fsModuleCache: true,
     coverage: {
       provider: "istanbul",
       reporter: ["text", "html", "lcov"],

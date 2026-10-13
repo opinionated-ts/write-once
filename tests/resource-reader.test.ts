@@ -100,6 +100,29 @@ describe("createResourceReader", () => {
     await reader.clear();
   });
 
+  it("retains shared content until every registered consumer releases it", async () => {
+    const readText = vi.fn(async () => "shared content");
+    const reader = createResourceReader(readText);
+    const source = resource("file:/project/shared.md", "/project/shared.md");
+    reader.setConsumers(new Map([[source.id, 2]]));
+
+    const first = await reader.read(source, "first", "resolver", context);
+    const second = await reader.read(source, "second", "resolver", context);
+    await reader.release(source.id);
+
+    const stillCached = await reader.read(source, "third", "resolver", context);
+    expect(stillCached.text).toBe(first.text);
+    expect(second.text).toBe(first.text);
+    expect(readText).toHaveBeenCalledTimes(1);
+
+    await reader.release(source.id);
+    await reader.release(source.id);
+    const afterFinalRelease = await reader.read(source, "fourth", "resolver", context);
+    expect(afterFinalRelease.text).toBe("shared content");
+    expect(readText).toHaveBeenCalledTimes(2);
+    await reader.clear();
+  });
+
   it("preloads an oversized file without rereading the original source", async () => {
     const readText = vi.fn(async () => "a source larger than the configured budget");
     const reader = createResourceReader(readText, 0.00001);
@@ -112,6 +135,37 @@ describe("createResourceReader", () => {
     expect(loaded.text).toBe("a source larger than the configured budget");
     expect(readText).toHaveBeenCalledTimes(1);
     await reader.release(source.id);
+    await reader.clear();
+  });
+
+  it("shares a failed in-flight read and permits a later retry", async () => {
+    let rejectRead!: (cause: Error) => void;
+    const readText = vi
+      .fn<() => Promise<string>>()
+      .mockImplementationOnce(
+        () =>
+          new Promise<string>((_resolve, reject) => {
+            rejectRead = reject;
+          }),
+      )
+      .mockResolvedValueOnce("recovered after concurrent failure");
+    const reader = createResourceReader(readText);
+    const source = resource(
+      "file:/project/concurrent-failure.md",
+      "/project/concurrent-failure.md",
+    );
+
+    const first = reader.read(source, "source", "resolver", context);
+    const second = reader.read(source, "source", "resolver", context);
+    rejectRead(new Error("read failed"));
+
+    const failures = await Promise.allSettled([first, second]);
+    expect(failures.map((failure) => failure.status)).toEqual(["rejected", "rejected"]);
+    expect(readText).toHaveBeenCalledTimes(1);
+
+    const retried = await reader.read(source, "source", "resolver", context);
+    expect(retried.text).toBe("recovered after concurrent failure");
+    expect(readText).toHaveBeenCalledTimes(2);
     await reader.clear();
   });
 
