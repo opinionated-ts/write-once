@@ -35,6 +35,37 @@ describe("runGenerate", () => {
     );
   });
 
+  it("handles sources larger than the content budget in the staged pipeline", async () => {
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    await writeFile(join(cwd, "one.md"), "first source content larger than budget", "utf8");
+    await writeFile(join(cwd, "two.md"), "second source content larger than budget", "utf8");
+    await writeFile(
+      destination,
+      [
+        'fragment source="./one.md"',
+        "old one",
+        "/fragment",
+        'fragment source="./two.md"',
+        "old two",
+        "/fragment",
+      ].join("\n"),
+      "utf8",
+    );
+    await writeFile(
+      join(cwd, "write-once.config.json"),
+      JSON.stringify({ include: ["README.md"], memoryBudgetMiB: 0.00001, maxConcurrency: 2 }),
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(0);
+    const output = await readFile(destination, "utf8");
+    expect(output).toContain("first source content larger than budget");
+    expect(output).toContain("second source content larger than budget");
+  });
+
   it("uses an explicit config path and reports config failures", async () => {
     const cwd = await createProject();
     await writeFile(join(cwd, "targets.json"), JSON.stringify({ include: ["README.md"] }), "utf8");
