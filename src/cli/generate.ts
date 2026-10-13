@@ -16,6 +16,7 @@ import {
   prepareSourceReferences,
   ResourcePreparationFailure,
 } from "../resource-preparation.js";
+import { createResourceReader } from "../resource-reader.js";
 import { writeDestinationPlans } from "../safe-write.js";
 
 export interface GenerateOptions {
@@ -138,6 +139,7 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
     };
   }
 
+  const reader = createResourceReader();
   try {
     const plans: DestinationPlan[] = [];
     // Resolve and plan only after every selected preparer has completed.
@@ -149,11 +151,13 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
         config: loaded.value.config,
         scan: input.scan,
         preparations: prepared.preparations,
+        reader,
       });
       if (!planned.ok) diagnostics.push(planned.error);
       else plans.push(planned.value);
     }
     // oxlint-enable no-await-in-loop
+    reader.clear();
 
     if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
       return {
@@ -180,6 +184,7 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
       unchanged: writeResult.unchanged,
     };
   } finally {
+    reader.clear();
     await cleanupPreparedResources(prepared);
   }
 }

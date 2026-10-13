@@ -1,5 +1,4 @@
 import { error, isFailure, ok } from "@opinionated-ts/result";
-import { readFile } from "node:fs/promises";
 
 import type { NormalizedWriteOnceConfig } from "./config.js";
 import type { Diagnostic } from "./types.js";
@@ -25,6 +24,7 @@ import { wholeFileExtractor } from "./extractors/whole-file-extractor.js";
 import { scanMarkers } from "./marker-scanner.js";
 import { localSourceResolver } from "./resolvers/local-source-resolver.js";
 import { normalizeResolvedResource } from "./resource-path.js";
+import { createResourceReader, type ResourceReader } from "./resource-reader.js";
 
 export interface PlanDestinationOptions {
   destination: string;
@@ -32,6 +32,7 @@ export interface PlanDestinationOptions {
   config: NormalizedWriteOnceConfig;
   scan?: DestinationScan;
   preparations?: readonly PreparedResourceBatch[];
+  reader?: ResourceReader;
 }
 
 export interface DestinationScan {
@@ -210,6 +211,7 @@ async function planBlock(
   reference: SourceReferenceContext,
   config: NormalizedWriteOnceConfig,
   preparations: readonly PreparedResourceBatch[],
+  reader: ResourceReader,
 ): Promise<ReturnType<typeof ok<PlannedReplacement>> | ReturnType<typeof diagnosticError>> {
   const { source, selector, marker } = reference;
   const relevantPreparations = preparations.filter((preparation) =>
@@ -249,13 +251,7 @@ async function planBlock(
 
   try {
     const normalized = await normalizeResolvedResource(resolved, source, resolver.id, context);
-    const sourceText = await readFile(normalized.absolutePath, "utf8");
-    resource = {
-      id: normalized.id,
-      location: normalized.location,
-      text: sourceText,
-      ...(normalized.metadata === undefined ? {} : { metadata: normalized.metadata }),
-    };
+    resource = await reader.read(normalized, source, resolver.id, context);
   } catch (cause) {
     return diagnosticError(
       "resolve",
@@ -376,11 +372,12 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
   }
 
   const preparations = options.preparations ?? [];
+  const reader = options.reader ?? createResourceReader();
   const replacements: PlannedReplacement[] = [];
   for (const reference of scan.value.references) {
     // Preserve source-order hook execution; hooks may have observable side effects.
     // oxlint-disable-next-line no-await-in-loop
-    const planned = await planBlock(destination, text, reference, config, preparations);
+    const planned = await planBlock(destination, text, reference, config, preparations, reader);
     if (!planned.ok) return error(planned.error);
     replacements.push(planned.value);
   }
