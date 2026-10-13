@@ -10,6 +10,7 @@ import type {
 
 import { MarkerStructureError } from "./errors/marker-structure-error.js";
 import { parseMarkerLine } from "./marker-parser.js";
+import { applySuppressionDirectives } from "./marker-suppression.js";
 
 export interface ScanMarkersOptions {
   /** Identifier included in diagnostics. Defaults to "<input>". */
@@ -140,7 +141,13 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
   const blocks: MarkerBlock[] = [];
   const declarations: NamedDeclaration[] = [];
   const declarationNames = new Map<string, MarkerToken>();
-  const lines = getLines(text);
+  const suppression = applySuppressionDirectives(text);
+  if (suppression.diagnostic !== undefined) {
+    const { message, offset, line, column } = suppression.diagnostic;
+    return structureError(message, resource, undefined, { offset, line, column });
+  }
+
+  const lines = getLines(suppression.text);
 
   for (const line of lines) {
     const parsed = parseMarkerLine(line.text, {

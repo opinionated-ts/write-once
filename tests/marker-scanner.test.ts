@@ -200,6 +200,79 @@ describe("scanMarkers", () => {
     }
   });
 
+  it("suppresses the next fragment without affecting following fragments or offsets", () => {
+    const text = [
+      "// write-once-ignore-next",
+      '/* fragment range="invalid" */',
+      "intentionally invalid content",
+      "/* /fragment */",
+      '<!-- fragment source="./valid.md" -->',
+      "valid content",
+      "<!-- /fragment -->",
+    ].join("\n");
+
+    const result = scanMarkers(text, { resource: "README.md" });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value.blocks).toHaveLength(1);
+      expect(
+        text.slice(result.value.blocks[0]!.span.start, result.value.blocks[0]!.span.end),
+      ).toContain("./valid.md");
+      expect(result.value.blocks[0]!.span.start).toBe(
+        text.indexOf('<!-- fragment source="./valid.md" -->'),
+      );
+    }
+  });
+
+  it("suppresses fragments inside language-agnostic regions", () => {
+    const text = [
+      '<!-- fragment source="./before.md" -->',
+      "before",
+      "<!-- /fragment -->",
+      "<!-- write-once-ignore-start -->",
+      'fragment range="not-a-range"',
+      "/fragment",
+      'fragment name="hidden"',
+      "hidden declaration",
+      "/fragment",
+      "// write-once-ignore-end",
+      '<!-- fragment source="./after.md" -->',
+      "after",
+      "<!-- /fragment -->",
+    ].join("\n");
+
+    const result = scanMarkers(text);
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value.blocks).toHaveLength(2);
+      expect(result.value.declarations).toHaveLength(0);
+      expect(result.value.blocks.map((block) => block.opening.attributes.source)).toEqual([
+        "./before.md",
+        "./after.md",
+      ]);
+    }
+  });
+
+  it.each([
+    ["write-once-ignore-end\n", "no matching start"],
+    ['write-once-ignore-start\nfragment source="./a.md"\n/fragment\n', "no matching end"],
+    [
+      "write-once-ignore-start\nwrite-once-ignore-start\nwrite-once-ignore-end\n",
+      "cannot be nested",
+    ],
+    ["write-once-ignore-next\nordinary text\n", "no following fragment"],
+  ])("reports malformed suppression directives: %s", (text, message) => {
+    const result = scanMarkers(text);
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.code).toBe("MARKER_STRUCTURE_ERROR");
+      expect(result.error.message).toContain(message);
+    }
+  });
+
   it("returns an empty scan for text without marker lines", () => {
     const result = scanMarkers("ordinary text\nfragmentary is not a marker");
 

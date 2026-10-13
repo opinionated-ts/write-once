@@ -64,6 +64,35 @@ describe("planDestinationFile", () => {
     expect(text).toContain("old content");
   });
 
+  it("leaves an ignored next fragment untouched while generating later fragments", async () => {
+    const root = await createProject();
+    await writeFile(join(root, "source.md"), "updated content\n", "utf8");
+    const destination = join(root, "README.md");
+    const ignored = [
+      "<!-- write-once-ignore-next -->",
+      '<!-- fragment source="./missing.md" -->',
+      "intentionally invalid example",
+      "<!-- /fragment -->",
+    ];
+    const valid = ['<!-- fragment source="./source.md" -->', "old content", "<!-- /fragment -->"];
+    const text = [...ignored, ...valid].join("\n");
+
+    const result = await planDestinationFile({ destination, text, config: normalized(root) });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value.outputText).toBe(
+        [
+          ...ignored,
+          '<!-- fragment source="./source.md" -->',
+          "updated content",
+          "<!-- /fragment -->",
+        ].join("\n"),
+      );
+      expect(result.value.replacements).toHaveLength(1);
+    }
+  });
+
   it("uses the named, range, or whole extractor based on the selector", async () => {
     const root = await createProject();
     await writeFile(

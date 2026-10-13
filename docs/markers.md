@@ -23,6 +23,40 @@ Old generated text.
 
 By default, write-once replaces only the text between the two complete delimiter lines. The opening and closing lines, including wrapper comments and surrounding text, remain unchanged. Multiple marker tokens on one line are rejected as ambiguous.
 
+## Suppressing fragments
+
+Use language-agnostic suppression tokens to keep intentionally invalid examples in a document without disabling validation for the rest of the file. The tokens are recognized as plain text; their surrounding comment syntax is not interpreted.
+
+Ignore the next fragment block:
+
+```md
+<!-- write-once-ignore-next -->
+<!-- fragment range="not-a-valid-range" -->
+
+This intentionally invalid example is left untouched.
+<!-- /fragment -->
+
+<!-- fragment source="./content.md" -->
+
+This fragment is still processed normally.
+<!-- /fragment -->
+```
+
+Ignore all fragments within a region:
+
+```ts
+// write-once-ignore-start
+fragment range="not-a-valid-range"
+/fragment
+<!-- fragment source="./missing.md" -->
+<!-- /fragment -->
+<!-- write-once-ignore-end -->
+```
+
+The start and end tokens may use different host-language comment wrappers. Only the directive words matter. Suppressed content remains unchanged; its fragment markers and declarations are excluded from scanning, resolution, extraction, and generation. Fragments outside the suppressed scope continue to be processed normally.
+
+Region directives cannot be nested. An end directive must match a start directive, and an ignore-next directive must have a following fragment marker. Malformed or unmatched directives produce a diagnostic rather than silently suppressing unintended content.
+
 ## Read-only declarations
 
 A marker with `name` and no `source` declares a manually maintained fragment:
