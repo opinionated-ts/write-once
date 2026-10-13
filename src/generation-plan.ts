@@ -1,4 +1,5 @@
 import { error, isFailure, ok } from "@opinionated-ts/result";
+import { readFile } from "node:fs/promises";
 
 import type { NormalizedWriteOnceConfig } from "./config.js";
 import type { Diagnostic } from "./types.js";
@@ -10,6 +11,7 @@ import type {
   MarkerBlock,
   PreparedResourceBatch,
   ResourceResolver,
+  ResolvedContent,
   ResolvedResource,
   SourceReferenceContext,
   SourceSelector,
@@ -22,6 +24,7 @@ import { rangeExtractor } from "./extractors/range-extractor.js";
 import { wholeFileExtractor } from "./extractors/whole-file-extractor.js";
 import { scanMarkers } from "./marker-scanner.js";
 import { localSourceResolver } from "./resolvers/local-source-resolver.js";
+import { normalizeResolvedResource } from "./resource-path.js";
 
 export interface PlanDestinationOptions {
   destination: string;
@@ -172,7 +175,7 @@ function selectResolver(
 
 function selectExtractor(
   extractors: readonly ContentExtractor[],
-  resource: ResolvedResource,
+  resource: ResolvedContent,
   selector: SourceSelector,
   context: Parameters<ContentExtractor["canExtract"]>[2],
 ): ContentExtractor | undefined {
@@ -217,10 +220,11 @@ async function planBlock(
         assigned.source === reference.source,
     ),
   );
-  const context = { cwd: config.root, destination, preparations: relevantPreparations };
+  const context = { cwd: config.root, destination, reference, preparations: relevantPreparations };
   const resolvers = [...config.resolvers, localSourceResolver];
   let resolver: ResourceResolver | undefined;
-  let resource: ResolvedResource;
+  let resolved: ResolvedResource;
+  let resource: ResolvedContent;
 
   try {
     resolver = selectResolver(resolvers, source, context);
@@ -232,11 +236,30 @@ async function planBlock(
         marker,
       );
     }
-    resource = await resolver.resolve(source, context);
+    resolved = await resolver.resolve(source, context);
   } catch (cause) {
     return diagnosticError(
       "resolve",
-      `Could not resolve source "${source}".`,
+      `Resolver "${resolver?.id ?? "selection"}" could not resolve source "${source}".`,
+      destination,
+      marker,
+      cause,
+    );
+  }
+
+  try {
+    const normalized = await normalizeResolvedResource(resolved, source, resolver.id, context);
+    const sourceText = await readFile(normalized.absolutePath, "utf8");
+    resource = {
+      id: normalized.id,
+      location: normalized.location,
+      text: sourceText,
+      ...(normalized.metadata === undefined ? {} : { metadata: normalized.metadata }),
+    };
+  } catch (cause) {
+    return diagnosticError(
+      "resolve",
+      `Resolver "${resolver.id}" returned an unusable path for source "${source}": ${cause instanceof Error ? cause.message : String(cause)}`,
       destination,
       marker,
       cause,

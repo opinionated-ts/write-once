@@ -28,16 +28,18 @@ afterEach(async () => {
 describe("registration-order selection", () => {
   it("selects the first compatible resolver", async () => {
     const { root, config } = await setup();
+    await writeFile(join(root, "first.md"), "first resolver", "utf8");
+    await writeFile(join(root, "second.md"), "second resolver", "utf8");
     const resolvers: ResourceResolver[] = [
       {
         id: "first",
         canResolve: () => true,
-        resolve: () => ({ id: "first", location: "first", text: "first resolver" }),
+        resolve: () => ({ root, path: "first.md" }),
       },
       {
         id: "second",
         canResolve: () => true,
-        resolve: () => ({ id: "second", location: "second", text: "second resolver" }),
+        resolve: () => ({ root, path: "second.md" }),
       },
     ];
     const result = await planDestinationFile({

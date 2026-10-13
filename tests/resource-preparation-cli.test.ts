@@ -41,6 +41,8 @@ export default {
       await appendFile(join(context.cwd, "events.log"), "prepare:" + references.length + "\\n");
       await mkdir(join(context.workingDirectory, "one"), { recursive: true });
       await mkdir(join(context.workingDirectory, "two"), { recursive: true });
+      await writeFile(join(context.workingDirectory, "one", "source.md"), "prepared content");
+      await writeFile(join(context.workingDirectory, "two", "source.md"), "prepared content");
       await writeFile(join(context.cwd, "prep.json"), JSON.stringify({
         count: references.length,
         workingDirectory: context.workingDirectory,
@@ -59,11 +61,11 @@ export default {
     canResolve: (source) => source.startsWith("repo:"),
     async resolve(source, context) {
       await appendFile(join(context.cwd, "events.log"), "resolve\\n");
-      return {
-        id: source,
-        location: source,
-        text: "prepared " + (context.preparations?.[0]?.result.value ? "yes" : "no"),
-      };
+      const preparedResource = context.preparations?.[0]?.result.resources.find((resource) =>
+        resource.references.some((reference) => reference.source === source),
+      );
+      if (preparedResource === undefined) throw new Error("Prepared resource mapping missing.");
+      return { root: preparedResource.root, path: "source.md" };
     },
   }],
 };
@@ -91,8 +93,8 @@ export default {
     }
     expect(workingDirectoryExists).toBe(false);
     expect(events).toEqual(["prepare:2", "resolve", "resolve"]);
-    expect(await readFile(first, "utf8")).toContain("prepared yes");
-    expect(await readFile(second, "utf8")).toContain("prepared yes");
+    expect(await readFile(first, "utf8")).toContain("prepared content");
+    expect(await readFile(second, "utf8")).toContain("prepared content");
   });
 
   it("fails generation and preserves destinations when a selected preparer fails", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedResource, SourceSelector } from "@/types";
+import type { ResolvedContent, SourceSelector } from "@/types";
 
 import { rangeExtractor } from "@/extractors/range-extractor";
 
@@ -18,7 +18,7 @@ const range = (
   },
 });
 
-function resource(text: string): ResolvedResource {
+function resource(text: string): ResolvedContent {
   return { id: "file:source", location: "/project/source.txt", text };
 }
 
@@ -53,17 +53,8 @@ describe("rangeExtractor", () => {
     );
   });
 
-  it("rejects reversed ranges and resources without text", () => {
+  it("rejects reversed ranges", () => {
     expect(() => rangeExtractor.extract(resource("abc"), range(1, 3, 1, 2))).toThrow(
-      expect.objectContaining({ code: "CONTENT_EXTRACTION_ERROR" }),
-    );
-
-    const metadataOnly: ResolvedResource = {
-      id: "custom:source",
-      location: "custom://source",
-      metadata: {},
-    };
-    expect(() => rangeExtractor.extract(metadataOnly, range(1, 1, 1, 1))).toThrow(
       expect.objectContaining({ code: "CONTENT_EXTRACTION_ERROR" }),
     );
   });

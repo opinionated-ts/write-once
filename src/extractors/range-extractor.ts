@@ -1,7 +1,7 @@
 import type {
   ContentExtractor,
   ResourceContext,
-  ResolvedResource,
+  ResolvedContent,
   SourceLocation,
   SourceSelector,
   TextCoordinate,
@@ -65,17 +65,17 @@ function offsetAt(
   return line.start + coordinate.column - 1;
 }
 
-function rangeLocation(resource: ResolvedResource, range: TextRange): SourceLocation {
+function rangeLocation(resource: ResolvedContent, range: TextRange): SourceLocation {
   return { resource: resource.location, start: range.start, end: range.end };
 }
 
 /** Extracts a precise UTF-16 line-and-column range from source text. */
 export const rangeExtractor = {
   id: "line-column-range-text",
-  canExtract(_resource: ResolvedResource, selector: SourceSelector, _context: ResourceContext) {
+  canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
     return selector.kind === "range";
   },
-  extract(resource: ResolvedResource, selector: SourceSelector) {
+  extract(resource: ResolvedContent, selector: SourceSelector) {
     if (selector.kind !== "range") {
       throw ContentExtractionError({
         message: "The range extractor requires a range selector.",

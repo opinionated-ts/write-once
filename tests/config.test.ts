@@ -8,7 +8,7 @@ import { defineConfig, validateConfig } from "@/config";
 const resolver: ResourceResolver = {
   id: "local",
   canResolve: () => true,
-  resolve: () => ({ id: "local:a", location: "/project/a", text: "text" }),
+  resolve: () => ({ root: "/project", path: "a" }),
 };
 const preparer: ResourcePreparer = {
   id: "prepare-local",

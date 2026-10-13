@@ -1,7 +1,7 @@
 import type {
   ContentExtractor,
   ResourceContext,
-  ResolvedResource,
+  ResolvedContent,
   SourceLocation,
   SourceSelector,
 } from "../types.js";
@@ -28,7 +28,7 @@ function endCoordinate(text: string) {
   return { line, column };
 }
 
-function sourceLocation(resource: ResolvedResource, text: string): SourceLocation {
+function sourceLocation(resource: ResolvedContent, text: string): SourceLocation {
   return {
     resource: resource.location,
     start: { line: 1, column: 1 },
@@ -39,10 +39,10 @@ function sourceLocation(resource: ResolvedResource, text: string): SourceLocatio
 /** Extracts the complete text from a resource without normalizing its content. */
 export const wholeFileExtractor = {
   id: "whole-file-text",
-  canExtract(_resource: ResolvedResource, selector: SourceSelector, _context: ResourceContext) {
+  canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
     return selector.kind === "whole";
   },
-  extract(resource: ResolvedResource, selector: SourceSelector) {
+  extract(resource: ResolvedContent, selector: SourceSelector) {
     if (selector.kind !== "whole") {
       throw ContentExtractionError({
         message: "The whole-file extractor only supports whole-source selectors.",

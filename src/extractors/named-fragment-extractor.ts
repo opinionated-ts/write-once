@@ -4,7 +4,7 @@ import type {
   ContentExtractor,
   NamedDeclaration,
   ResourceContext,
-  ResolvedResource,
+  ResolvedContent,
   SourceLocation,
   SourceSelector,
   TextSpan,
@@ -33,7 +33,7 @@ function coordinateAt(text: string, offset: number) {
   return { line, column };
 }
 
-function contentLocation(resource: ResolvedResource, text: string, span: TextSpan): SourceLocation {
+function contentLocation(resource: ResolvedContent, text: string, span: TextSpan): SourceLocation {
   return {
     resource: resource.location,
     start: coordinateAt(text, span.start),
@@ -48,10 +48,10 @@ function findDeclaration(declarations: NamedDeclaration[], name: string) {
 /** Extracts a named read-only declaration from one resolved resource. */
 export const namedFragmentExtractor = {
   id: "named-fragment-text",
-  canExtract(_resource: ResolvedResource, selector: SourceSelector, _context: ResourceContext) {
+  canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
     return selector.kind === "named";
   },
-  extract(resource: ResolvedResource, selector: SourceSelector) {
+  extract(resource: ResolvedContent, selector: SourceSelector) {
     if (selector.kind !== "named") {
       throw ContentExtractionError({
         message: "The named-fragment extractor requires a named selector.",

@@ -1,12 +1,11 @@
-import { readFile } from "node:fs/promises";
-import { isAbsolute, normalize, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, normalize, relative, resolve, sep } from "node:path";
 import { platform } from "node:process";
 
 import type { ResourceContext, ResourceResolver, ResolvedResource } from "../types.js";
 
 import { SourceResolutionError } from "../errors/source-resolution-error.js";
 
-function normalizeSourcePath(source: string, cwd: string): string {
+function normalizeSourcePath(source: string, cwd: string): ResolvedResource {
   if (/^[A-Za-z]:[\\/]/.test(source) && platform !== "win32") {
     throw SourceResolutionError({
       message: "Windows absolute source paths can only be resolved on Windows.",
@@ -15,7 +14,12 @@ function normalizeSourcePath(source: string, cwd: string): string {
   }
 
   const platformPath = source.replace(/[\\/]/g, sep);
-  return normalize(isAbsolute(platformPath) ? platformPath : resolve(cwd, platformPath));
+  const absoluteSource = isAbsolute(platformPath);
+  const location = normalize(absoluteSource ? platformPath : resolve(cwd, platformPath));
+  const root = absoluteSource ? dirname(location) : resolve(cwd);
+  const path = absoluteSource ? basename(location) : relative(root, location);
+
+  return { root, path, metadata: { source, cwd } };
 }
 
 function isLocalPath(source: string): boolean {
@@ -32,7 +36,7 @@ export const localSourceResolver: ResourceResolver = {
   canResolve(source: string, _context: ResourceContext): boolean {
     return isLocalPath(source);
   },
-  async resolve(source: string, context: ResourceContext): Promise<ResolvedResource> {
+  resolve(source: string, context: ResourceContext): ResolvedResource {
     if (!isLocalPath(source)) {
       throw SourceResolutionError({
         message: "Only local file sources are supported by the built-in resolver.",
@@ -40,24 +44,6 @@ export const localSourceResolver: ResourceResolver = {
       });
     }
 
-    const location = normalizeSourcePath(source, context.cwd);
-    let text: string;
-
-    try {
-      text = await readFile(location, "utf8");
-    } catch (cause) {
-      const reason = cause instanceof Error ? cause.message : String(cause);
-      throw SourceResolutionError({
-        message: `Could not read source "${source}": ${reason}`,
-        context: { public: { source, location, cwd: context.cwd }, cause },
-      });
-    }
-
-    return {
-      id: `file:${location}`,
-      location,
-      text,
-      metadata: { source, cwd: context.cwd },
-    };
+    return normalizeSourcePath(source, context.cwd);
   },
 };

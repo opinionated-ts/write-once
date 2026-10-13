@@ -162,6 +162,7 @@ export async function prepareSourceReferences(
         });
         preparations.push({
           preparerId: preparer.id,
+          workingDirectory,
           references: batchReferences,
           result: validatePreparationResult(result, batchReferences, workingDirectory),
         });

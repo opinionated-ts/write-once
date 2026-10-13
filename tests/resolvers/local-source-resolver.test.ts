@@ -1,6 +1,6 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { localSourceResolver } from "@/resolvers/local-source-resolver";
@@ -20,49 +20,32 @@ afterEach(async () => {
 });
 
 describe("localSourceResolver", () => {
-  it("resolves relative paths from the provided project root and preserves text", async () => {
+  it("returns a root and relative path for project-relative sources without reading them", async () => {
     const cwd = await createProject();
-    await mkdir(join(cwd, "docs"));
-    await writeFile(join(cwd, "docs", "source.md"), "line one\r\nline two", "utf8");
-
     const resource = await localSourceResolver.resolve("docs/source.md", { cwd });
 
-    expect(resource.location).toBe(join(cwd, "docs", "source.md"));
-    expect(resource.id).toBe(`file:${resource.location}`);
-    expect(resource.text).toBe("line one\r\nline two");
+    expect(resource).toEqual({
+      root: cwd,
+      path: join("docs", "source.md"),
+      metadata: { source: "docs/source.md", cwd },
+    });
   });
 
   it("normalizes Windows-style separators for relative paths", async () => {
     const cwd = await createProject();
-    await mkdir(join(cwd, "docs"));
-    await writeFile(join(cwd, "docs", "source.md"), "content", "utf8");
-
     const resource = await localSourceResolver.resolve("docs\\source.md", { cwd });
 
-    expect(resource.text).toBe("content");
+    expect(resource.root).toBe(cwd);
+    expect(resource.path).toBe(join("docs", "source.md"));
   });
 
-  it("accepts absolute paths and preserves colons in local filenames", async () => {
+  it("uses the containing directory as the root for absolute paths", async () => {
     const cwd = await createProject();
     const source = join(cwd, "source:notes.md");
-    await writeFile(source, "content", "utf8");
-
     const resource = await localSourceResolver.resolve(source, { cwd: "/" });
 
-    expect(resource.location).toBe(source);
-    expect(resource.text).toBe("content");
-  });
-
-  it("reports directories and invalid paths as typed resolution errors", async () => {
-    const cwd = await createProject();
-    await mkdir(join(cwd, "directory"));
-
-    await expect(localSourceResolver.resolve("directory", { cwd })).rejects.toMatchObject({
-      code: "SOURCE_RESOLUTION_ERROR",
-    });
-    await expect(localSourceResolver.resolve("bad\0path", { cwd })).rejects.toMatchObject({
-      code: "SOURCE_RESOLUTION_ERROR",
-    });
+    expect(resource.root).toBe(dirname(source));
+    expect(resource.path).toBe(basename(source));
   });
 
   it("does not claim remote or future repository source references", () => {
@@ -72,21 +55,9 @@ describe("localSourceResolver", () => {
     expect(localSourceResolver.canResolve("./source.md", context)).toBe(true);
   });
 
-  it("throws an actionable typed error for missing sources", async () => {
-    const cwd = await createProject();
-
-    await expect(localSourceResolver.resolve("missing.md", { cwd })).rejects.toMatchObject({
-      code: "SOURCE_RESOLUTION_ERROR",
-      message: expect.stringContaining('Could not read source "missing.md"'),
-    });
-  });
-
-  it("rejects URL sources instead of attempting network access", async () => {
-    await expect(
+  it("rejects URL sources instead of attempting network access", () => {
+    expect(() =>
       localSourceResolver.resolve("https://example.com/source.md", { cwd: "/tmp" }),
-    ).rejects.toMatchObject({
-      code: "SOURCE_RESOLUTION_ERROR",
-      message: "Only local file sources are supported by the built-in resolver.",
-    });
+    ).toThrow(expect.objectContaining({ code: "SOURCE_RESOLUTION_ERROR" }));
   });
 });

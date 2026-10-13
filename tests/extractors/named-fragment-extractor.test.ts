@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedResource, SourceSelector } from "@/types";
+import type { ResolvedContent, SourceSelector } from "@/types";
 
 import { namedFragmentExtractor } from "@/extractors/named-fragment-extractor";
 
@@ -17,7 +17,7 @@ describe("namedFragmentExtractor", () => {
       "<!-- /fragment -->",
       "after",
     ].join("\r\n");
-    const resource: ResolvedResource = {
+    const resource: ResolvedContent = {
       id: "file:source",
       location: "/project/source.md",
       text,
@@ -41,7 +41,7 @@ describe("namedFragmentExtractor", () => {
   });
 
   it("supports nested declarations and case-sensitive names", () => {
-    const resource: ResolvedResource = {
+    const resource: ResolvedContent = {
       id: "file:source",
       location: "/project/source.md",
       text: [
@@ -62,7 +62,7 @@ describe("namedFragmentExtractor", () => {
   });
 
   it("reports missing declarations and duplicate names", () => {
-    const missing: ResolvedResource = {
+    const missing: ResolvedContent = {
       id: "file:missing",
       location: "/project/missing.md",
       text: 'fragment name="present"\ncontent\n/fragment',
@@ -71,7 +71,7 @@ describe("namedFragmentExtractor", () => {
       expect.objectContaining({ code: "CONTENT_EXTRACTION_ERROR" }),
     );
 
-    const duplicate: ResolvedResource = {
+    const duplicate: ResolvedContent = {
       id: "file:duplicate",
       location: "/project/duplicate.md",
       text: 'fragment name="intro"\na\n/fragment\nfragment name="intro"\nb\n/fragment',
@@ -82,21 +82,12 @@ describe("namedFragmentExtractor", () => {
   });
 
   it("only accepts named selectors and requires text", () => {
-    const resource: ResolvedResource = {
+    const resource: ResolvedContent = {
       id: "file:source",
       location: "/project/source.md",
       text: "content",
     };
     expect(namedFragmentExtractor.canExtract(resource, named("intro"), context)).toBe(true);
     expect(namedFragmentExtractor.canExtract(resource, { kind: "whole" }, context)).toBe(false);
-
-    const metadataOnly: ResolvedResource = {
-      id: "custom:source",
-      location: "custom://source",
-      metadata: {},
-    };
-    expect(() => namedFragmentExtractor.extract(metadataOnly, named("intro"))).toThrow(
-      expect.objectContaining({ code: "CONTENT_EXTRACTION_ERROR" }),
-    );
   });
 });

@@ -16,8 +16,7 @@ See [configuration](configuration.md) for defaults, file discovery, and supporte
 The core exports independent `ResourcePreparer`, `ResourceResolver`, `ContentExtractor`, and `GenerationHook` contracts, plus their supporting types:
 
 - A preparer synchronously selects source references in registration order; the first matching preparer wins. It then receives its selected references as one asynchronous-capable batch. Its context supplies a Write Once-managed temporary working directory; prepared resources must remain inside it. One result can describe multiple roots, each associated with the references it serves; provider-specific values remain opaque to the core. Write Once scans all destinations and assigns references before invoking each selected preparer once per generation. Its temporary working directory is removed after planning and writes finish. Resolvers receive the preparation batches associated with their reference. Triggers should be fast, synchronous, and side-effect-free.
-- `PathResourceResolver` resolves a source reference to `ResolvedResourcePath`: a root, relative path, and optional metadata, never file contents. `ResourceContext` can carry preparation results to resolvers.
-- A resolver maps a source reference to a resource identity/location, text, and/or metadata.
+- `ResourceResolver.resolve()` returns `ResolvedResource`: a root, relative path, and optional metadata, never file contents. The core normalizes and validates the location before loading it as `ResolvedContent`. `ResourceContext` carries the full source-reference context and relevant preparation batches to resolvers.
 - An extractor selects whole-file text, a named fragment, a range, or another content shape from an already resolved resource.
 - A hook receives `HookContext` and returns either `{ text }` or `{ fullText }`.
 

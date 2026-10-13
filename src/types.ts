@@ -169,40 +169,25 @@ export interface ResourcePreparer {
   ): ResourcePreparationResult | Promise<ResourcePreparationResult>;
 }
 
-/** A resource location returned by path-based resolvers; it contains no text. */
-export interface ResolvedResourcePath {
+/** A resolved resource location. Resolver output never contains file contents. */
+export interface ResolvedResource {
   root: string;
   path: string;
   metadata?: Readonly<Record<string, unknown>>;
 }
 
-/** Resolves a source reference to a path without reading its file contents. */
-export interface PathResourceResolver {
-  id: string;
-  canResolve(source: string, context: ResourceContext): boolean;
-  resolve(
-    source: string,
-    context: ResourceContext,
-  ): ResolvedResourcePath | Promise<ResolvedResourcePath>;
-}
-
-/**
- * A resource resolved for extraction.
- *
- * `location` and `id` are opaque identifiers to the core. A resolver may
- * supply text directly or provide metadata required by a compatible extractor.
- */
-export type ResolvedResource = {
+/** A resolved resource after the core has loaded its contents. */
+export interface ResolvedContent {
   id: string;
   location: string;
-} & (
-  | { text: string; metadata?: Readonly<Record<string, unknown>> }
-  | { text?: string; metadata: Readonly<Record<string, unknown>> }
-);
+  text: string;
+  metadata?: Readonly<Record<string, unknown>>;
+}
 
 /** A preparer's opaque result paired with the references assigned to it. */
 export interface PreparedResourceBatch {
   preparerId: string;
+  workingDirectory: string;
   references: readonly SourceReferenceContext[];
   result: ResourcePreparationResult;
 }
@@ -210,6 +195,7 @@ export interface PreparedResourceBatch {
 export interface ResourceContext {
   cwd: string;
   destination?: string;
+  reference?: SourceReferenceContext;
   metadata?: Readonly<Record<string, unknown>>;
   preparations?: readonly PreparedResourceBatch[];
 }
@@ -242,12 +228,12 @@ export interface ResourceResolver {
 export interface ContentExtractor {
   id: string;
   canExtract(
-    resource: ResolvedResource,
+    resource: ResolvedContent,
     selector: SourceSelector,
     context: ResourceContext,
   ): boolean;
   extract(
-    resource: ResolvedResource,
+    resource: ResolvedContent,
     selector: SourceSelector,
     context: ResourceContext,
   ): ExtractedContent | Promise<ExtractedContent>;
@@ -293,7 +279,7 @@ export interface HookContext {
   /** Selector used to extract content from the resolved resource. */
   selector?: SourceSelector;
   /** Resolved resource, including metadata supplied by its resolver. */
-  source?: ResolvedResource;
+  source?: ResolvedContent;
 }
 
 /** Body-only text preserves marker lines; fullText replaces the complete block. */

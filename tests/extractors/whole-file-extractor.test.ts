@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { ResolvedResource, SourceSelector } from "@/types";
+import type { ResolvedContent, SourceSelector } from "@/types";
 
 import { wholeFileExtractor } from "@/extractors/whole-file-extractor";
 
@@ -11,7 +11,7 @@ describe("wholeFileExtractor", () => {
   it.each(["", "content", "line one\nline two\n", "line one\r\nline two", "😀\n"])(
     "preserves source text exactly: %j",
     (text) => {
-      const resource: ResolvedResource = {
+      const resource: ResolvedContent = {
         id: "local:source",
         location: "/project/source.md",
         text,
@@ -31,7 +31,7 @@ describe("wholeFileExtractor", () => {
   );
 
   it("records end coordinates without normalizing newline styles", () => {
-    const resource: ResolvedResource = {
+    const resource: ResolvedContent = {
       id: "local:source",
       location: "/project/source.md",
       text: "one\r\ntwo\n",
@@ -58,17 +58,5 @@ describe("wholeFileExtractor", () => {
         context,
       ),
     ).toBe(false);
-  });
-
-  it("reports metadata-only resources as extraction errors", () => {
-    const resource: ResolvedResource = {
-      id: "custom:source",
-      location: "custom://source",
-      metadata: { token: "value" },
-    };
-
-    expect(() => wholeFileExtractor.extract(resource, whole)).toThrow(
-      expect.objectContaining({ code: "CONTENT_EXTRACTION_ERROR" }),
-    );
   });
 });
