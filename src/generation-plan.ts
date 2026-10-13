@@ -444,16 +444,14 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
     if (resolvedReference === undefined) continue;
     // Preserve source-order hook execution; hooks may have observable side effects.
     // oxlint-disable-next-line no-await-in-loop
-    const planned = await planBlock(
-      destination,
-      text,
-      reference,
-      config,
-      reader,
-      resolvedReference,
-    );
-    // oxlint-disable-next-line no-await-in-loop
-    await reader.release(resolvedReference.resource.id);
+    let planned: Awaited<ReturnType<typeof planBlock>>;
+    try {
+      // oxlint-disable-next-line no-await-in-loop
+      planned = await planBlock(destination, text, reference, config, reader, resolvedReference);
+    } finally {
+      // oxlint-disable-next-line no-await-in-loop
+      await reader.release(resolvedReference.resource.id);
+    }
     if (!planned.ok) {
       // oxlint-disable-next-line no-await-in-loop
       if (ownsReader) await reader.clear();

@@ -197,7 +197,7 @@ export function createResourceReader(
       if (entry.remaining !== Number.POSITIVE_INFINITY) {
         entry.remaining = Math.max(0, entry.remaining - 1);
       }
-      if (entry.remaining > 0) {
+      if (entry.remaining > 0 || entry.active > 0) {
         await makeRoom(0);
         return;
       }
