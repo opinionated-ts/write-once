@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { coordinateAt, getTextLines } from "@/text-index";
+import { coordinateAt, coordinateAtOffset, getTextLines } from "@/text-index";
 
 describe("text index primitives", () => {
   it("splits LF, CRLF, and lone-CR lines without changing offsets", () => {
@@ -12,6 +12,15 @@ describe("text index primitives", () => {
       { text: "c", start: 7, contentEnd: 8, end: 9, number: 3 },
       { text: "", start: 9, contentEnd: 9, end: 9, number: 4 },
     ]);
+  });
+
+  it("matches direct coordinate calculation for every offset around mixed line endings", () => {
+    const text = "a\r\n😀b\rc\n";
+    const lines = getTextLines(text);
+
+    for (let offset = 0; offset <= text.length; offset += 1) {
+      expect(coordinateAtOffset(lines, offset)).toEqual(coordinateAt(text, offset));
+    }
   });
 
   it("uses one-based lines and UTF-16 columns", () => {

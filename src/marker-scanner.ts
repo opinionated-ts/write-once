@@ -11,7 +11,7 @@ import type {
 import { MarkerStructureError } from "./errors/marker-structure-error.js";
 import { parseMarkerLine } from "./marker-parser.js";
 import { applySuppressionDirectives } from "./marker-suppression.js";
-import { coordinateAt, getTextLines } from "./text-index.js";
+import { coordinateAtOffset, getTextLines } from "./text-index.js";
 
 export interface ScanMarkersOptions {
   /** Identifier included in diagnostics. Defaults to "<input>". */
@@ -30,11 +30,15 @@ interface OpenMarker {
   declarationParent?: string;
 }
 
-function locationForSpan(resource: string, text: string, span: TextSpan): SourceLocation {
+function locationForSpan(
+  resource: string,
+  lines: ReturnType<typeof getTextLines>,
+  span: TextSpan,
+): SourceLocation {
   return {
     resource,
-    start: coordinateAt(text, span.start),
-    end: coordinateAt(text, span.end),
+    start: coordinateAtOffset(lines, span.start),
+    end: coordinateAtOffset(lines, span.end),
   };
 }
 
@@ -81,6 +85,7 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
   }
 
   const lines = getTextLines(suppression.text);
+  const linesByStart = new Map(lines.map((line) => [line.start, line]));
 
   for (const line of lines) {
     const parsed = parseMarkerLine(line.text, {
@@ -136,7 +141,7 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
     const opening = stack.pop();
     if (opening === undefined) continue;
 
-    const openingLine = lines.find((candidate) => candidate.start === opening.token.lineSpan.start);
+    const openingLine = linesByStart.get(opening.token.lineSpan.start);
     const closingLine = line;
 
     if (openingLine === undefined) {
@@ -179,7 +184,7 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
         name: opening.name,
         marker: block,
         contentSpan: block.bodySpan,
-        location: locationForSpan(resource, text, block.span),
+        location: locationForSpan(resource, lines, block.span),
       });
     }
   }

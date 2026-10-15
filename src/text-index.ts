@@ -42,6 +42,32 @@ export function getTextLines(text: string): TextLine[] {
   return lines;
 }
 
+/** Return the 1-based line and UTF-16 column using precomputed line offsets. */
+export function coordinateAtOffset(lines: readonly TextLine[], offset: number): TextCoordinate {
+  let low = 0;
+  let high = lines.length - 1;
+
+  while (low <= high) {
+    const middle = (low + high) >>> 1;
+    const line = lines[middle]!;
+    if (offset < line.start) {
+      high = middle - 1;
+    } else if (middle + 1 < lines.length && offset >= lines[middle + 1]!.start) {
+      low = middle + 1;
+    } else {
+      if (offset > line.contentEnd && offset < line.end) {
+        return { line: line.number + 1, column: 1 };
+      }
+      return { line: line.number, column: offset - line.start + 1 };
+    }
+  }
+
+  const last = lines[lines.length - 1];
+  return last === undefined
+    ? { line: 1, column: 1 }
+    : { line: last.number, column: offset - last.start + 1 };
+}
+
 /** Return the 1-based line and UTF-16 column for a source offset. */
 export function coordinateAt(text: string, offset: number): TextCoordinate {
   let line = 1;
