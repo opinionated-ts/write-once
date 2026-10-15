@@ -78,6 +78,16 @@ function findMarker(line: string) {
   return found[0];
 }
 
+/** Return whether a line contains a marker recognized by the parser's boundary rules. */
+export function hasMarkerKind(lineText: string, kind: "open" | "close"): boolean {
+  const marker = findMarker(lineText);
+  if (marker === undefined || marker.start < 0 || marker.kind !== kind) return false;
+  if (kind === "open") return true;
+
+  const parsed = parseAttributes(lineText, marker.end);
+  return parsed.attributes.length === 0 && parsed.error === undefined;
+}
+
 function parseAttributes(line: string, start: number) {
   const attributes: ParsedAttribute[] = [];
   let cursor = start;

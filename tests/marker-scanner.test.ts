@@ -225,6 +225,22 @@ describe("scanMarkers", () => {
     }
   });
 
+  it("keeps ignore-next active when ordinary prose mentions a closing marker", () => {
+    const text = [
+      "<!-- write-once-ignore-next -->",
+      'fragment source="./missing.md"',
+      "This prose mentions /fragment as an example.",
+      'fragment source="./also-missing.md"',
+      "inner content",
+      "/fragment",
+    ].join("\n");
+
+    const result = scanMarkers(text, { resource: "README.md" });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) expect(result.value).toEqual({ blocks: [], declarations: [] });
+  });
+
   it("suppresses fragments inside language-agnostic regions", () => {
     const text = [
       '<!-- fragment source="./before.md" -->',

@@ -1,3 +1,5 @@
+import { hasMarkerKind } from "./marker-parser.js";
+
 export interface SuppressionDiagnostic {
   message: string;
   offset: number;
@@ -19,9 +21,6 @@ interface LineRecord {
 }
 
 const DIRECTIVE = /(?<![A-Za-z0-9_-])write-once-ignore-(next|start|end)(?![A-Za-z0-9_-])/g;
-const OPEN_MARKER =
-  /(?<![A-Za-z0-9_/-])fragment(?![A-Za-z0-9_-])(?=[\s\S]*?(?:^|\s)(?:source|name|range)\s*=)/;
-const CLOSE_MARKER = /(?<![A-Za-z0-9_-])\/fragment(?![A-Za-z0-9_-])/;
 
 function getLines(text: string): LineRecord[] {
   const lines: LineRecord[] = [];
@@ -72,7 +71,7 @@ export function applySuppressionDirectives(text: string): SuppressionResult {
   for (const line of lines) {
     if (skippingNext) {
       maskLine(characters, line);
-      if (CLOSE_MARKER.test(line.text)) skippingNext = false;
+      if (hasMarkerKind(line.text, "close")) skippingNext = false;
       continue;
     }
 
@@ -147,10 +146,10 @@ export function applySuppressionDirectives(text: string): SuppressionResult {
       continue;
     }
 
-    if (pendingNext !== undefined && OPEN_MARKER.test(line.text)) {
+    if (pendingNext !== undefined && hasMarkerKind(line.text, "open")) {
       maskLine(characters, line);
       pendingNext = undefined;
-      skippingNext = !CLOSE_MARKER.test(line.text);
+      skippingNext = !hasMarkerKind(line.text, "close");
     }
   }
 
