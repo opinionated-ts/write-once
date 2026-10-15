@@ -104,6 +104,28 @@ describe("discoverDestinationFiles", () => {
     expect(result.files).toContain(join(root, "ignored.md"));
   });
 
+  it("discovers large directory frontiers deterministically with a bounded worker setting", async () => {
+    const root = await createProject();
+    await Promise.all(
+      Array.from({ length: 80 }, async (_, index) => {
+        const directory = join(root, `package-${String(index).padStart(3, "0")}`);
+        await mkdir(directory);
+        await writeFile(join(directory, "README.md"), String(index), "utf8");
+      }),
+    );
+
+    const result = await discoverDestinationFiles({
+      ...config(root),
+      maxConcurrency: 3,
+    });
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.files).toHaveLength(80);
+    expect(result.files).toEqual(
+      [...result.files].toSorted((left, right) => (left < right ? -1 : left > right ? 1 : 0)),
+    );
+  });
+
   it("reports no matches as a warning", async () => {
     const root = await createProject();
     await writeFile(join(root, "README.txt"), "text", "utf8");

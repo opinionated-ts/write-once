@@ -80,29 +80,34 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
     };
   }
 
+  const inputResults = await mapConcurrent(
+    discovery.files,
+    loaded.value.config.maxConcurrency,
+    async (destination) => {
+      try {
+        const text = await readFile(destination, "utf8");
+        const scan = scanDestinationFile(destination, text);
+        return scan.ok
+          ? { input: { destination, text, scan: scan.value } }
+          : { diagnostic: scan.error };
+      } catch (cause) {
+        return {
+          diagnostic: {
+            severity: "error" as const,
+            stage: "generate" as const,
+            message: `Could not read destination: ${cause instanceof Error ? cause.message : String(cause)}`,
+            file: destination,
+            cause,
+          },
+        };
+      }
+    },
+  );
   const inputs: Array<{ destination: string; text: string; scan: DestinationScan }> = [];
-  // Read and scan each destination once before discovering preparer batches.
-  // oxlint-disable no-await-in-loop
-  for (const destination of discovery.files) {
-    let text: string;
-    try {
-      text = await readFile(destination, "utf8");
-    } catch (cause) {
-      diagnostics.push({
-        severity: "error",
-        stage: "generate",
-        message: `Could not read destination: ${cause instanceof Error ? cause.message : String(cause)}`,
-        file: destination,
-        cause,
-      });
-      continue;
-    }
-
-    const scan = scanDestinationFile(destination, text);
-    if (!scan.ok) diagnostics.push(scan.error);
-    else inputs.push({ destination, text, scan: scan.value });
+  for (const result of inputResults) {
+    if ("input" in result && result.input !== undefined) inputs.push(result.input);
+    else diagnostics.push(result.diagnostic);
   }
-  // oxlint-enable no-await-in-loop
 
   if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
     return {

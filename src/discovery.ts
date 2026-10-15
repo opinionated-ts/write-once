@@ -5,6 +5,8 @@ import { relative, resolve, sep } from "node:path";
 import type { NormalizedWriteOnceConfig } from "./config.js";
 import type { Diagnostic } from "./types.js";
 
+import { mapConcurrent } from "./async-pool.js";
+
 export interface FileDiscoveryResult {
   files: string[];
   diagnostics: Diagnostic[];
@@ -96,18 +98,33 @@ export async function discoverDestinationFiles(
 
   const root = resolve(config.root);
   const files: Array<{ absolute: string; relative: string }> = [];
+  const concurrency = Number.isFinite(config.maxConcurrency)
+    ? Math.max(1, Math.floor(config.maxConcurrency))
+    : 8;
 
-  async function visit(
-    directory: string,
-    inheritedGitIgnore: readonly GitIgnoreMatcher[],
-  ): Promise<void> {
+  interface DirectoryWork {
+    directory: string;
+    inheritedGitIgnore: readonly GitIgnoreMatcher[];
+  }
+
+  interface DirectoryResult {
+    children: DirectoryWork[];
+    files: Array<{ absolute: string; relative: string }>;
+    diagnostics: Diagnostic[];
+  }
+
+  async function visitDirectory({
+    directory,
+    inheritedGitIgnore,
+  }: DirectoryWork): Promise<DirectoryResult> {
+    const result: DirectoryResult = { children: [], files: [], diagnostics: [] };
     let gitIgnoreMatchers = inheritedGitIgnore;
     if (config.respectGitignore) {
       try {
         const localMatcher = await loadGitIgnoreMatcher(directory);
         if (localMatcher !== undefined) gitIgnoreMatchers = [...inheritedGitIgnore, localMatcher];
       } catch (cause) {
-        diagnostics.push({
+        result.diagnostics.push({
           severity: "error",
           message:
             "Cannot read .gitignore in " +
@@ -118,7 +135,7 @@ export async function discoverDestinationFiles(
           file: resolve(directory, ".gitignore"),
           cause,
         });
-        return;
+        return result;
       }
     }
 
@@ -126,19 +143,18 @@ export async function discoverDestinationFiles(
     try {
       entries = await readdir(directory, { withFileTypes: true });
     } catch (cause) {
-      diagnostics.push({
+      result.diagnostics.push({
         severity: "error",
         message: `Cannot read directory "${directory}": ${cause instanceof Error ? cause.message : String(cause)}`,
         stage: "discovery",
         file: directory,
         cause,
       });
-      return;
+      return result;
     }
 
     entries.sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0));
 
-    const childDirectories: string[] = [];
     for (const entry of entries) {
       const absolute = resolve(directory, entry.name);
       const relativePath = toRelativePath(root, absolute);
@@ -148,7 +164,7 @@ export async function discoverDestinationFiles(
           !matchesExclude(relativePath + "/__write_once_directory__", excludeMatchers) &&
           !(config.respectGitignore && isGitIgnored(absolute, true, gitIgnoreMatchers))
         ) {
-          childDirectories.push(absolute);
+          result.children.push({ directory: absolute, inheritedGitIgnore: gitIgnoreMatchers });
         }
         continue;
       }
@@ -159,14 +175,26 @@ export async function discoverDestinationFiles(
         !matchesExclude(relativePath, excludeMatchers) &&
         !(config.respectGitignore && isGitIgnored(absolute, false, gitIgnoreMatchers))
       ) {
-        files.push({ absolute, relative: relativePath });
+        result.files.push({ absolute, relative: relativePath });
       }
     }
 
-    await Promise.all(childDirectories.map((child) => visit(child, gitIgnoreMatchers)));
+    return result;
   }
 
-  await visit(root, []);
+  let frontier: DirectoryWork[] = [{ directory: root, inheritedGitIgnore: [] }];
+  // oxlint-disable-next-line no-await-in-loop
+  while (frontier.length > 0) {
+    // oxlint-disable-next-line no-await-in-loop
+    const results = await mapConcurrent(frontier, concurrency, visitDirectory);
+    frontier = [];
+    for (const result of results) {
+      files.push(...result.files);
+      diagnostics.push(...result.diagnostics);
+      frontier.push(...result.children);
+    }
+  }
+
   files.sort((left, right) =>
     left.relative < right.relative ? -1 : left.relative > right.relative ? 1 : 0,
   );
