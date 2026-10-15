@@ -108,26 +108,28 @@ function diagnosticError(
   } satisfies Diagnostic);
 }
 
-export function selectorFor(source: string, name?: string, range?: string): SourceSelector {
-  if (name !== undefined) return { kind: "named", name };
-  if (range === undefined) return { kind: "whole" };
+export function selectorFor(source: string, name?: string, range?: string) {
+  if (name !== undefined) return ok<SourceSelector>({ kind: "named", name });
+  if (range === undefined) return ok<SourceSelector>({ kind: "whole" });
 
   const match = /^(\d+):(\d+)-(\d+):(\d+)$/.exec(range);
   if (match === null) {
-    throw ContentExtractionError({
-      message: `Invalid source range "${range}".`,
-      context: { public: { source, range } },
-    });
+    return error(
+      ContentExtractionError({
+        message: "Invalid source range " + JSON.stringify(range) + ".",
+        context: { public: { source, range } },
+      }),
+    );
   }
 
   const [, startLine, startColumn, endLine, endColumn] = match;
-  return {
+  return ok<SourceSelector>({
     kind: "range",
     range: {
       start: { line: Number(startLine), column: Number(startColumn) },
       end: { line: Number(endLine), column: Number(endColumn) },
     },
-  };
+  });
 }
 
 /** Scan one destination once and collect source references with selector context. */
@@ -153,22 +155,11 @@ export function scanDestinationFile(destination: string, text: string) {
     const { source, name, range } = marker.opening.attributes;
     if (source === undefined) continue;
 
-    try {
-      references.push({
-        source,
-        selector: selectorFor(source, name, range),
-        destination,
-        marker,
-      });
-    } catch (cause) {
-      return diagnosticError(
-        "marker",
-        cause instanceof Error ? cause.message : String(cause),
-        destination,
-        marker,
-        cause,
-      );
+    const selector = selectorFor(source, name, range);
+    if (isFailure(selector)) {
+      return diagnosticError("marker", selector.error.message, destination, marker, selector.error);
     }
+    references.push({ source, selector: selector.value, destination, marker });
   }
 
   return ok({ references });
@@ -330,7 +321,21 @@ async function planBlock(
         marker,
       );
     }
-    extracted = await extractor.extract(resource, selector, context);
+    if (extractor.extractResult !== undefined) {
+      const extraction = await extractor.extractResult(resource, selector, context);
+      if (isFailure(extraction)) {
+        return diagnosticError(
+          "extract",
+          "Could not extract content from source " + JSON.stringify(source) + ".",
+          destination,
+          marker,
+          extraction.error,
+        );
+      }
+      extracted = extraction.value;
+    } else {
+      extracted = await extractor.extract(resource, selector, context);
+    }
   } catch (cause) {
     return diagnosticError(
       "extract",

@@ -1,3 +1,5 @@
+import { error, isFailure, ok } from "@opinionated-ts/result";
+
 import type {
   ContentExtractor,
   ResourceContext,
@@ -69,6 +71,55 @@ function rangeLocation(resource: ResolvedContent, range: TextRange): SourceLocat
   return { resource: resource.location, start: range.start, end: range.end };
 }
 
+function extractRangeResult(resource: ResolvedContent, selector: SourceSelector) {
+  if (selector.kind !== "range") {
+    return error(
+      ContentExtractionError({
+        message: "The range extractor requires a range selector.",
+        context: { public: { selector: selector.kind, resource: resource.location } },
+      }),
+    );
+  }
+
+  if (typeof resource.text !== "string") {
+    return error(
+      ContentExtractionError({
+        message: `Resource "${resource.location}" does not provide text for range extraction.`,
+        context: { public: { resourceId: resource.id, location: resource.location } },
+      }),
+    );
+  }
+
+  const lines = getLines(resource.text);
+  let start: number;
+  let end: number;
+  try {
+    start = offsetAt(lines, selector.range.start, resource.location, "start");
+    end = offsetAt(lines, selector.range.end, resource.location, "end");
+  } catch (cause) {
+    return error(cause instanceof Error ? cause : new Error(String(cause)));
+  }
+  if (end < start) {
+    return error(
+      ContentExtractionError({
+        message: `Range end precedes range start in source "${resource.location}".`,
+        context: { public: { resource: resource.location, range: selector.range } },
+      }),
+    );
+  }
+
+  return ok({
+    text: resource.text.slice(start, end),
+    location: rangeLocation(resource, selector.range),
+    metadata: {
+      ...resource.metadata,
+      resourceId: resource.id,
+      resourceLocation: resource.location,
+      range: selector.range,
+    },
+  });
+}
+
 /** Extracts a precise UTF-16 line-and-column range from source text. */
 export const rangeExtractor = {
   id: "line-column-range-text",
@@ -76,39 +127,9 @@ export const rangeExtractor = {
     return selector.kind === "range";
   },
   extract(resource: ResolvedContent, selector: SourceSelector) {
-    if (selector.kind !== "range") {
-      throw ContentExtractionError({
-        message: "The range extractor requires a range selector.",
-        context: { public: { selector: selector.kind, resource: resource.location } },
-      });
-    }
-
-    if (typeof resource.text !== "string") {
-      throw ContentExtractionError({
-        message: `Resource "${resource.location}" does not provide text for range extraction.`,
-        context: { public: { resourceId: resource.id, location: resource.location } },
-      });
-    }
-
-    const lines = getLines(resource.text);
-    const start = offsetAt(lines, selector.range.start, resource.location, "start");
-    const end = offsetAt(lines, selector.range.end, resource.location, "end");
-    if (end < start) {
-      throw ContentExtractionError({
-        message: `Range end precedes range start in source "${resource.location}".`,
-        context: { public: { resource: resource.location, range: selector.range } },
-      });
-    }
-
-    return {
-      text: resource.text.slice(start, end),
-      location: rangeLocation(resource, selector.range),
-      metadata: {
-        ...resource.metadata,
-        resourceId: resource.id,
-        resourceLocation: resource.location,
-        range: selector.range,
-      },
-    };
+    const result = extractRangeResult(resource, selector);
+    if (isFailure(result)) throw result.error;
+    return result.value;
   },
+  extractResult: extractRangeResult,
 } satisfies ContentExtractor;

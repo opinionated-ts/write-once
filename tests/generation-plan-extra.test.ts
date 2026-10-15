@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { validateConfig } from "@/config";
-import { planDestinationFile } from "@/generation-plan";
+import { planDestinationFile, selectorFor } from "@/generation-plan";
 import { createResourceReader } from "@/resource-reader";
 
 const directories: string[] = [];
@@ -26,6 +26,17 @@ afterEach(async () => {
 });
 
 describe("generation plan edge cases", () => {
+  it("returns invalid selector ranges as typed Result failures", () => {
+    const result = selectorFor("./source.md", undefined, "invalid");
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error).toMatchObject({
+        code: "CONTENT_EXTRACTION_ERROR",
+        message: 'Invalid source range "invalid".',
+      });
+    }
+  });
+
   it("preserves line and column for marker syntax diagnostics", async () => {
     const { root, config } = await setup();
     const destination = join(root, "README.md");
@@ -135,6 +146,22 @@ describe("generation plan edge cases", () => {
     if (isFailure(result)) {
       expect(result.error.stage).toBe("resolve");
       expect(result.error.message).toContain('could not resolve source "unsupported:resource"');
+    }
+  });
+
+  it("preserves typed built-in extraction errors in pipeline diagnostics", async () => {
+    const { root, config } = await setup();
+    const destination = join(root, "README.md");
+    const result = await planDestinationFile({
+      destination,
+      text: ['fragment source="./source.md" name="missing"', "old", "/fragment"].join("\n"),
+      config,
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.stage).toBe("extract");
+      expect(result.error.cause).toMatchObject({ code: "CONTENT_EXTRACTION_ERROR" });
     }
   });
 

@@ -1,3 +1,5 @@
+import { error, isFailure, ok } from "@opinionated-ts/result";
+
 import type {
   ContentExtractor,
   ResourceContext,
@@ -36,6 +38,36 @@ function sourceLocation(resource: ResolvedContent, text: string): SourceLocation
   };
 }
 
+function extractWholeFileResult(resource: ResolvedContent, selector: SourceSelector) {
+  if (selector.kind !== "whole") {
+    return error(
+      ContentExtractionError({
+        message: "The whole-file extractor only supports whole-source selectors.",
+        context: { public: { selector: selector.kind, resource: resource.location } },
+      }),
+    );
+  }
+
+  if (typeof resource.text !== "string") {
+    return error(
+      ContentExtractionError({
+        message: `Resource "${resource.location}" does not provide text for whole-file extraction.`,
+        context: { public: { resourceId: resource.id, location: resource.location } },
+      }),
+    );
+  }
+
+  return ok({
+    text: resource.text,
+    location: sourceLocation(resource, resource.text),
+    metadata: {
+      ...resource.metadata,
+      resourceId: resource.id,
+      resourceLocation: resource.location,
+    },
+  });
+}
+
 /** Extracts the complete text from a resource without normalizing its content. */
 export const wholeFileExtractor = {
   id: "whole-file-text",
@@ -43,28 +75,9 @@ export const wholeFileExtractor = {
     return selector.kind === "whole";
   },
   extract(resource: ResolvedContent, selector: SourceSelector) {
-    if (selector.kind !== "whole") {
-      throw ContentExtractionError({
-        message: "The whole-file extractor only supports whole-source selectors.",
-        context: { public: { selector: selector.kind, resource: resource.location } },
-      });
-    }
-
-    if (typeof resource.text !== "string") {
-      throw ContentExtractionError({
-        message: `Resource "${resource.location}" does not provide text for whole-file extraction.`,
-        context: { public: { resourceId: resource.id, location: resource.location } },
-      });
-    }
-
-    return {
-      text: resource.text,
-      location: sourceLocation(resource, resource.text),
-      metadata: {
-        ...resource.metadata,
-        resourceId: resource.id,
-        resourceLocation: resource.location,
-      },
-    };
+    const result = extractWholeFileResult(resource, selector);
+    if (isFailure(result)) throw result.error;
+    return result.value;
   },
+  extractResult: extractWholeFileResult,
 } satisfies ContentExtractor;

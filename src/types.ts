@@ -1,3 +1,5 @@
+import type { Result } from "@opinionated-ts/result";
+
 /**
  * A half-open span in a JavaScript string, measured in UTF-16 code units.
  *
@@ -237,6 +239,12 @@ export interface ContentExtractor {
     selector: SourceSelector,
     context: ResourceContext,
   ): ExtractedContent | Promise<ExtractedContent>;
+  /** Explicit Result contract used by built-in extractors in the pipeline. */
+  extractResult?(
+    resource: ResolvedContent,
+    selector: SourceSelector,
+    context: ResourceContext,
+  ): Result<ExtractedContent> | Promise<Result<ExtractedContent>>;
 }
 
 /** A stage in the generation pipeline. Custom stages remain possible. */

@@ -1,3 +1,4 @@
+import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { describe, expect, it } from "vitest";
 
 import type { ResolvedContent, SourceSelector } from "@/types";
@@ -71,7 +72,7 @@ describe("namedFragmentExtractor", () => {
       path: "missing.md",
       id: "file:missing",
       location: "/project/missing.md",
-      text: 'fragment name="present"\ncontent\n/fragment',
+      text: ['fragment name="present"', "content", "/fragment"].join("\n"),
     };
     expect(() => namedFragmentExtractor.extract(missing, named("absent"))).toThrow(
       expect.objectContaining({ code: "CONTENT_EXTRACTION_ERROR" }),
@@ -108,6 +109,26 @@ describe("namedFragmentExtractor", () => {
     expect(() => namedFragmentExtractor.extract(missingText, named("intro"))).toThrow(
       expect.objectContaining({ message: expect.stringContaining("does not provide text") }),
     );
+  });
+
+  it("exposes typed extraction failures through its Result contract", () => {
+    const resource: ResolvedContent = {
+      root: "/project",
+      path: "missing.md",
+      id: "file:missing",
+      location: "/project/missing.md",
+      text: ['fragment name="present"', "content", "/fragment"].join("\n"),
+    };
+
+    const failed = namedFragmentExtractor.extractResult(resource, named("absent"));
+    expect(isFailure(failed)).toBe(true);
+    if (isFailure(failed)) {
+      expect(failed.error).toMatchObject({ code: "CONTENT_EXTRACTION_ERROR" });
+    }
+
+    const succeeded = namedFragmentExtractor.extractResult(resource, named("present"));
+    expect(isSuccess(succeeded)).toBe(true);
+    if (isSuccess(succeeded)) expect(succeeded.value.text).toBe("content\n");
   });
 
   it("only accepts named selectors and requires text", () => {
