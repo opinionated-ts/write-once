@@ -1,11 +1,11 @@
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { DestinationPlan } from "@/generation-plan";
 
-import { writeDestinationPlans } from "@/safe-write";
+import { writeDestinationPlans, writeDestinationPlansWithOperations } from "@/safe-write";
 
 const directories: string[] = [];
 
@@ -72,6 +72,25 @@ describe("writeDestinationPlans", () => {
     expect(result.diagnostics[0]?.message).toContain("changed after planning");
     expect(await readFile(destination, "utf8")).toBe("newer content");
     expect(await readdir(root)).toEqual(["README.md"]);
+  });
+
+  it("refuses to overwrite a destination changed after staging", async () => {
+    const root = await createProject();
+    const destination = join(root, "README.md");
+    await writeFile(destination, "original", "utf8");
+
+    const result = await writeDestinationPlansWithOperations(
+      [plan(destination, "original", "generated")],
+      {
+        beforeRename: async (path) => writeFile(path, "external update", "utf8"),
+        rename: async (temporary, path) => rename(temporary, path),
+      },
+    );
+
+    expect(result.written).toEqual([]);
+    expect(result.diagnostics[0]?.message).toContain("changed after staging");
+    expect(await readFile(destination, "utf8")).toBe("external update");
+    expect((await readdir(root)).toSorted()).toEqual(["README.md"]);
   });
 
   it("atomically replaces changed files and preserves file permissions", async () => {

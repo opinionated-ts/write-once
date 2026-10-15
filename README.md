@@ -44,7 +44,7 @@ Run:
 bunx write-once generate
 ```
 
-By default, only the text between the marker lines is replaced. Unchanged files are not rewritten; writes are atomic per file, not across the whole project.
+By default, only the text between the marker lines is replaced. Unchanged files are not rewritten; writes are atomic per file, not across the whole project. Destinations are checked before staging and again before replacement, but a concurrent edit after the final check can still race with the replacement.
 
 ## Guides
 

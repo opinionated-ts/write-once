@@ -14,6 +14,7 @@ export interface SafeWriteResult {
 interface StagedFile {
   destination: string;
   temporary: string;
+  originalText: string;
 }
 
 function writeDiagnostic(message: string, file: string, cause?: unknown): Diagnostic {
@@ -40,6 +41,7 @@ async function cleanupTemporaryFiles(files: readonly StagedFile[]): Promise<void
 
 interface SafeWriteOperations {
   rename: typeof renameFile;
+  beforeRename?: (destination: string) => Promise<void>;
 }
 
 /** Internal test seam for deterministic rename-failure coverage. */
@@ -92,7 +94,7 @@ export async function writeDestinationPlansWithOperations(
         `.${basename(destination)}.write-once-${randomUUID()}.tmp`,
       );
       const handle = await open(temporary, "wx", fileStat.mode & 0o7777);
-      staged.push({ destination, temporary });
+      staged.push({ destination, temporary, originalText: current });
       try {
         await handle.writeFile(plan.outputText, "utf8");
         await handle.sync();
@@ -126,13 +128,25 @@ export async function writeDestinationPlansWithOperations(
   for (let index = 0; index < staged.length; index += 1) {
     const file = staged[index]!;
     try {
+      await operations.beforeRename?.(file.destination);
+      const current = await readFile(file.destination, "utf8");
+      if (current !== file.originalText) {
+        await cleanupTemporaryFiles(staged.slice(index));
+        diagnostics.push(
+          writeDiagnostic(
+            "Destination changed after staging; refusing to overwrite newer content. A concurrent change after this final check can still race with replacement.",
+            file.destination,
+          ),
+        );
+        break;
+      }
       await operations.rename(file.temporary, file.destination);
       written.push(file.destination);
     } catch (cause) {
       await cleanupTemporaryFiles(staged.slice(index));
       diagnostics.push(
         writeDiagnostic(
-          `Could not replace "${file.destination}" after ${written.length} earlier write(s). Earlier writes were not rolled back: ${cause instanceof Error ? cause.message : String(cause)}`,
+          `Could not revalidate or replace "${file.destination}" after ${written.length} earlier write(s). Earlier writes were not rolled back: ${cause instanceof Error ? cause.message : String(cause)}`,
           file.destination,
           cause,
         ),
