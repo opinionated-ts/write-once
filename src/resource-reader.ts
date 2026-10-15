@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile, unlink, writeFile, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, unlink, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -53,7 +53,16 @@ export function createResourceReader(
   let retainedBytes = 0;
   let consumerCounts = new Map<string, number>();
   let budgetLock = Promise.resolve();
-  const spoolDirectory = join(tmpdir(), "write-once-content-" + randomUUID());
+  let spoolDirectory: string | undefined;
+  let spoolDirectoryPromise: Promise<string> | undefined;
+
+  function getSpoolDirectory(): Promise<string> {
+    spoolDirectoryPromise ??= mkdtemp(join(tmpdir(), "write-once-content-"));
+    return spoolDirectoryPromise.then((directory) => {
+      spoolDirectory = directory;
+      return directory;
+    });
+  }
 
   async function withBudgetLock<T>(operation: () => Promise<T>): Promise<T> {
     const previous = budgetLock;
@@ -72,9 +81,9 @@ export function createResourceReader(
   async function spill(entry: CachedContent): Promise<void> {
     if (entry.text === undefined || entry.active > 0) return;
     if (entry.spoolPath === undefined) {
-      entry.spoolPath = join(spoolDirectory, randomUUID() + ".txt");
-      await mkdir(spoolDirectory, { recursive: true });
-      await writeFile(entry.spoolPath, entry.text, "utf8");
+      const directory = await getSpoolDirectory();
+      entry.spoolPath = join(directory, randomUUID() + ".txt");
+      await writeFile(entry.spoolPath, entry.text, { encoding: "utf8", flag: "wx", mode: 0o600 });
     }
     if (entry.active > 0) return;
     retainedBytes -= entry.bytes;
@@ -215,7 +224,11 @@ export function createResourceReader(
       retainedBytes = 0;
       consumerCounts.clear();
       await Promise.all(paths.map((path) => unlink(path).catch(() => undefined)));
-      await rm(spoolDirectory, { recursive: true, force: true });
+      if (spoolDirectory !== undefined) {
+        await rm(spoolDirectory, { recursive: true, force: true });
+        spoolDirectory = undefined;
+        spoolDirectoryPromise = undefined;
+      }
     },
   };
 }

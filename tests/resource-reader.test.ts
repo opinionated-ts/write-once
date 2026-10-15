@@ -1,3 +1,6 @@
+import { readdir, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import type { NormalizedResourcePath } from "@/resource-path";
@@ -98,6 +101,43 @@ describe("createResourceReader", () => {
 
     await reader.release(first.id);
     await reader.clear();
+  });
+
+  it("stores spilled source content in a private temporary directory", async () => {
+    const before = new Set(await readdir(tmpdir()));
+    const reader = createResourceReader(
+      vi.fn(async (path: string) => `content:${path}`),
+      0.00001,
+    );
+    const first = resource("file:/project/private-first.md", "/project/private-first.md");
+    const second = resource("file:/project/private-second.md", "/project/private-second.md");
+    reader.setConsumers(
+      new Map([
+        [first.id, 2],
+        [second.id, 1],
+      ]),
+    );
+
+    await reader.read(first, "first", "resolver", context);
+    await reader.release(first.id);
+    await reader.read(second, "second", "resolver", context);
+
+    const created = (await readdir(tmpdir())).filter(
+      (name) => name.startsWith("write-once-content-") && !before.has(name),
+    );
+    expect(created).toHaveLength(1);
+    const directory = join(tmpdir(), created[0]!);
+    const directoryStat = await stat(directory);
+    const files = await readdir(directory);
+    expect(files).toHaveLength(1);
+
+    if (process.platform !== "win32") {
+      expect(directoryStat.mode & 0o777).toBe(0o700);
+      expect((await stat(join(directory, files[0]!))).mode & 0o777).toBe(0o600);
+    }
+
+    await reader.clear();
+    await expect(stat(directory)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("retains shared content until every registered consumer releases it", async () => {
