@@ -31,6 +31,7 @@
     }
   },
   "additionalProperties": {},
-  "$id": "https://unpkg.com/write-once@0.1.0/write-once.schema.json",
-  "title": "write-once JSON configuration"
+  "$id": "https://unpkg.com/write-once/write-once.schema.json",
+  "title": "write-once JSON configuration",
+  "x-write-once-schema-version": 1
 }

@@ -9,7 +9,11 @@ const schema = z.toJSONSchema(writeOnceConfigSchema, {
   io: "input",
 });
 
-schema["$id"] = "https://unpkg.com/write-once@0.1.0/write-once.schema.json";
+// Increment only when the generated configuration contract changes.
+const schemaVersion = 1;
+
+schema["$id"] = "https://unpkg.com/write-once/write-once.schema.json";
 schema["title"] = "write-once JSON configuration";
+schema["x-write-once-schema-version"] = schemaVersion;
 
 await writeFile(resolve("write-once.schema.json"), `${JSON.stringify(schema, null, 2)}\n`);

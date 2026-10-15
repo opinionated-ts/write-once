@@ -6,7 +6,7 @@ Add the published JSON Schema reference to enable editor validation and autocomp
 
 ```json
 {
-  "$schema": "https://unpkg.com/write-once@0.1.0/write-once.schema.json",
+  "$schema": "https://unpkg.com/write-once/write-once.schema.json",
   "root": ".",
   "include": ["**/*.md"],
   "exclude": ["generated/**"],
@@ -14,7 +14,7 @@ Add the published JSON Schema reference to enable editor validation and autocomp
 }
 ```
 
-The schema describes the JSON-serializable options: root, include, exclude, and respectGitignore. Unknown additional properties are allowed for compatibility, but they do not add programmatic capabilities.
+The schema describes the JSON-serializable options: root, include, exclude, and respectGitignore. Unknown additional properties are allowed for compatibility, but they do not add programmatic capabilities. The schema version is tracked independently from package releases and changes only when this contract changes.
 
 See [Configuration](configuration.md) for file discovery, defaults, and the recommended TypeScript API.
 
