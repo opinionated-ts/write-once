@@ -1,5 +1,6 @@
 import { error, isFailure, ok } from "@opinionated-ts/result";
 
+import type { SourceIndexCache } from "../source-index-cache.js";
 import type {
   ContentExtractor,
   NamedDeclaration,
@@ -26,7 +27,11 @@ function findDeclaration(declarations: NamedDeclaration[], name: string) {
   return declarations.find((declaration) => declaration.name === name);
 }
 
-function extractNamedFragmentResult(resource: ResolvedContent, selector: SourceSelector) {
+function extractNamedFragmentResult(
+  resource: ResolvedContent,
+  selector: SourceSelector,
+  sourceIndexes?: SourceIndexCache,
+) {
   if (selector.kind !== "named") {
     return error(
       ContentExtractionError({
@@ -47,7 +52,9 @@ function extractNamedFragmentResult(resource: ResolvedContent, selector: SourceS
     );
   }
 
-  const scanned = scanMarkers(resource.text, { resource: resource.location });
+  const scanned =
+    sourceIndexes?.scanMarkers(resource, { resource: resource.location }) ??
+    scanMarkers(resource.text, { resource: resource.location });
   if (isFailure(scanned)) return error(scanned.error);
 
   const declaration = findDeclaration(scanned.value.declarations, selector.name);
@@ -75,15 +82,20 @@ function extractNamedFragmentResult(resource: ResolvedContent, selector: SourceS
 }
 
 /** Extracts a named read-only declaration from one resolved resource. */
-export const namedFragmentExtractor = {
-  id: "named-fragment-text",
-  canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
-    return selector.kind === "named";
-  },
-  extract(resource: ResolvedContent, selector: SourceSelector) {
-    const result = extractNamedFragmentResult(resource, selector);
-    if (isFailure(result)) throw result.error;
-    return result.value;
-  },
-  extractResult: extractNamedFragmentResult,
-} satisfies ContentExtractor;
+export function createNamedFragmentExtractor(sourceIndexes?: SourceIndexCache) {
+  return {
+    id: "named-fragment-text",
+    canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
+      return selector.kind === "named";
+    },
+    extract(resource: ResolvedContent, selector: SourceSelector) {
+      const result = extractNamedFragmentResult(resource, selector, sourceIndexes);
+      if (isFailure(result)) throw result.error;
+      return result.value;
+    },
+    extractResult: (resource: ResolvedContent, selector: SourceSelector) =>
+      extractNamedFragmentResult(resource, selector, sourceIndexes),
+  } satisfies ContentExtractor;
+}
+
+export const namedFragmentExtractor = createNamedFragmentExtractor();

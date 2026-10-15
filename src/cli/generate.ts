@@ -21,6 +21,7 @@ import {
 } from "../resource-preparation.js";
 import { createResourceReader } from "../resource-reader.js";
 import { writeDestinationPlans } from "../safe-write.js";
+import { createSourceIndexCache } from "../source-index-cache.js";
 
 export interface GenerateOptions {
   cwd?: string;
@@ -175,6 +176,7 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
   }
 
   const reader = createResourceReader(undefined, loaded.value.config.memoryBudgetMiB);
+  const sourceIndexCache = createSourceIndexCache();
   reader.setConsumers(consumers);
   try {
     const uniqueResources: ResolvedReference[] = [];
@@ -244,6 +246,7 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
         preparations: prepared.preparations,
         reader,
         resolved: resolvedResult.resolved,
+        sourceIndexCache,
       });
       if (!planned.ok) diagnostics.push(planned.error);
       else plans.push(planned.value);
@@ -276,6 +279,7 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
       unchanged: writeResult.unchanged,
     };
   } finally {
+    sourceIndexCache.clear();
     await reader.clear();
     await cleanupPreparedResources(prepared);
   }

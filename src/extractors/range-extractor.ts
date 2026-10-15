@@ -1,5 +1,6 @@
 import { error, isFailure, ok } from "@opinionated-ts/result";
 
+import type { SourceIndexCache } from "../source-index-cache.js";
 import type {
   ContentExtractor,
   ResourceContext,
@@ -42,7 +43,11 @@ function rangeLocation(resource: ResolvedContent, range: TextRange): SourceLocat
   return { resource: resource.location, start: range.start, end: range.end };
 }
 
-function extractRangeResult(resource: ResolvedContent, selector: SourceSelector) {
+function extractRangeResult(
+  resource: ResolvedContent,
+  selector: SourceSelector,
+  sourceIndexes?: SourceIndexCache,
+) {
   if (selector.kind !== "range") {
     return error(
       ContentExtractionError({
@@ -61,7 +66,7 @@ function extractRangeResult(resource: ResolvedContent, selector: SourceSelector)
     );
   }
 
-  const lines = getTextLines(resource.text);
+  const lines = sourceIndexes?.getTextLines(resource) ?? getTextLines(resource.text);
   let start: number;
   let end: number;
   try {
@@ -92,15 +97,20 @@ function extractRangeResult(resource: ResolvedContent, selector: SourceSelector)
 }
 
 /** Extracts a precise UTF-16 line-and-column range from source text. */
-export const rangeExtractor = {
-  id: "line-column-range-text",
-  canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
-    return selector.kind === "range";
-  },
-  extract(resource: ResolvedContent, selector: SourceSelector) {
-    const result = extractRangeResult(resource, selector);
-    if (isFailure(result)) throw result.error;
-    return result.value;
-  },
-  extractResult: extractRangeResult,
-} satisfies ContentExtractor;
+export function createRangeExtractor(sourceIndexes?: SourceIndexCache) {
+  return {
+    id: "line-column-range-text",
+    canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {
+      return selector.kind === "range";
+    },
+    extract(resource: ResolvedContent, selector: SourceSelector) {
+      const result = extractRangeResult(resource, selector, sourceIndexes);
+      if (isFailure(result)) throw result.error;
+      return result.value;
+    },
+    extractResult: (resource: ResolvedContent, selector: SourceSelector) =>
+      extractRangeResult(resource, selector, sourceIndexes),
+  } satisfies ContentExtractor;
+}
+
+export const rangeExtractor = createRangeExtractor();

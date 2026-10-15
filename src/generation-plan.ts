@@ -19,13 +19,14 @@ import type {
 
 import { mapConcurrent } from "./async-pool.js";
 import { ContentExtractionError } from "./errors/content-extraction-error.js";
-import { namedFragmentExtractor } from "./extractors/named-fragment-extractor.js";
-import { rangeExtractor } from "./extractors/range-extractor.js";
+import { createNamedFragmentExtractor } from "./extractors/named-fragment-extractor.js";
+import { createRangeExtractor } from "./extractors/range-extractor.js";
 import { wholeFileExtractor } from "./extractors/whole-file-extractor.js";
 import { scanMarkers } from "./marker-scanner.js";
 import { localSourceResolver } from "./resolvers/local-source-resolver.js";
 import { normalizeResolvedResource } from "./resource-path.js";
 import { createResourceReader, type ResourceReader } from "./resource-reader.js";
+import { createSourceIndexCache, type SourceIndexCache } from "./source-index-cache.js";
 
 export interface PlanDestinationOptions {
   destination: string;
@@ -35,6 +36,8 @@ export interface PlanDestinationOptions {
   preparations?: readonly PreparedResourceBatch[];
   reader?: ResourceReader;
   resolved?: ReadonlyMap<string, ResolvedReference>;
+  /** Internal derived indexes shared for the lifetime of one generation run. */
+  sourceIndexCache?: SourceIndexCache;
 }
 
 export interface DestinationScan {
@@ -283,6 +286,7 @@ async function planBlock(
   config: NormalizedWriteOnceConfig,
   reader: ResourceReader,
   resolvedReference: ResolvedReference,
+  sourceIndexCache: SourceIndexCache,
 ): Promise<ReturnType<typeof ok<PlannedReplacement>> | ReturnType<typeof diagnosticError>> {
   const { source, selector, marker } = reference;
   const { resolver, resource: normalized, context } = resolvedReference;
@@ -304,8 +308,8 @@ async function planBlock(
 
   const extractors = [
     ...config.extractors,
-    namedFragmentExtractor,
-    rangeExtractor,
+    createNamedFragmentExtractor(sourceIndexCache),
+    createRangeExtractor(sourceIndexCache),
     wholeFileExtractor,
   ];
   let extractor: ContentExtractor | undefined;
@@ -428,6 +432,7 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
   const preparations = options.preparations ?? [];
   const ownsReader = options.reader === undefined;
   const reader = options.reader ?? createResourceReader(undefined, config.memoryBudgetMiB);
+  const sourceIndexCache = options.sourceIndexCache ?? createSourceIndexCache();
   const resolvedResult =
     options.resolved === undefined
       ? await resolveSourceReferences(scan.value.references, config, preparations)
@@ -452,7 +457,15 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
     let planned: Awaited<ReturnType<typeof planBlock>>;
     try {
       // oxlint-disable-next-line no-await-in-loop
-      planned = await planBlock(destination, text, reference, config, reader, resolvedReference);
+      planned = await planBlock(
+        destination,
+        text,
+        reference,
+        config,
+        reader,
+        resolvedReference,
+        sourceIndexCache,
+      );
     } finally {
       // oxlint-disable-next-line no-await-in-loop
       await reader.release(resolvedReference.resource.id);
