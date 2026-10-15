@@ -11,39 +11,10 @@ import type {
 } from "../types.js";
 
 import { ContentExtractionError } from "../errors/content-extraction-error.js";
-
-interface LineRecord {
-  start: number;
-  contentEnd: number;
-}
-
-function getLines(text: string): LineRecord[] {
-  const lines: LineRecord[] = [];
-  let start = 0;
-
-  while (start < text.length) {
-    let contentEnd = start;
-    while (contentEnd < text.length && text[contentEnd] !== "\r" && text[contentEnd] !== "\n") {
-      contentEnd += 1;
-    }
-
-    let end = contentEnd;
-    if (text[end] === "\r" && text[end + 1] === "\n") end += 2;
-    else if (text[end] === "\r" || text[end] === "\n") end += 1;
-
-    lines.push({ start, contentEnd });
-    start = end;
-  }
-
-  if (text.length === 0 || text.endsWith("\n") || text.endsWith("\r")) {
-    lines.push({ start: text.length, contentEnd: text.length });
-  }
-
-  return lines;
-}
+import { getTextLines } from "../text-index.js";
 
 function offsetAt(
-  lines: LineRecord[],
+  lines: ReturnType<typeof getTextLines>,
   coordinate: TextCoordinate,
   resource: string,
   edge: string,
@@ -90,7 +61,7 @@ function extractRangeResult(resource: ResolvedContent, selector: SourceSelector)
     );
   }
 
-  const lines = getLines(resource.text);
+  const lines = getTextLines(resource.text);
   let start: number;
   let end: number;
   try {

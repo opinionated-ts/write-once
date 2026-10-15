@@ -12,26 +12,7 @@ import type {
 
 import { ContentExtractionError } from "../errors/content-extraction-error.js";
 import { scanMarkers } from "../marker-scanner.js";
-
-function coordinateAt(text: string, offset: number) {
-  let line = 1;
-  let column = 1;
-
-  for (let index = 0; index < offset; index += 1) {
-    if (text[index] === "\r") {
-      if (text[index + 1] === "\n") index += 1;
-      line += 1;
-      column = 1;
-    } else if (text[index] === "\n") {
-      line += 1;
-      column = 1;
-    } else {
-      column += 1;
-    }
-  }
-
-  return { line, column };
-}
+import { coordinateAt } from "../text-index.js";
 
 function contentLocation(resource: ResolvedContent, text: string, span: TextSpan): SourceLocation {
   return {

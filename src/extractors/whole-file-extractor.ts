@@ -9,32 +9,13 @@ import type {
 } from "../types.js";
 
 import { ContentExtractionError } from "../errors/content-extraction-error.js";
-
-function endCoordinate(text: string) {
-  let line = 1;
-  let column = 1;
-
-  for (let index = 0; index < text.length; index += 1) {
-    if (text[index] === "\r") {
-      if (text[index + 1] === "\n") index += 1;
-      line += 1;
-      column = 1;
-    } else if (text[index] === "\n") {
-      line += 1;
-      column = 1;
-    } else {
-      column += 1;
-    }
-  }
-
-  return { line, column };
-}
+import { coordinateAt } from "../text-index.js";
 
 function sourceLocation(resource: ResolvedContent, text: string): SourceLocation {
   return {
     resource: resource.location,
     start: { line: 1, column: 1 },
-    end: endCoordinate(text),
+    end: coordinateAt(text, text.length),
   };
 }
 

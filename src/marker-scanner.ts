@@ -11,6 +11,7 @@ import type {
 import { MarkerStructureError } from "./errors/marker-structure-error.js";
 import { parseMarkerLine } from "./marker-parser.js";
 import { applySuppressionDirectives } from "./marker-suppression.js";
+import { coordinateAt, getTextLines } from "./text-index.js";
 
 export interface ScanMarkersOptions {
   /** Identifier included in diagnostics. Defaults to "<input>". */
@@ -22,14 +23,6 @@ export interface MarkerScanResult {
   declarations: NamedDeclaration[];
 }
 
-interface LineRecord {
-  text: string;
-  start: number;
-  contentEnd: number;
-  end: number;
-  number: number;
-}
-
 interface OpenMarker {
   token: MarkerToken;
   isGenerated: boolean;
@@ -37,71 +30,11 @@ interface OpenMarker {
   declarationParent?: string;
 }
 
-function getLines(text: string): LineRecord[] {
-  const lines: LineRecord[] = [];
-  let start = 0;
-  let number = 1;
-
-  while (start < text.length) {
-    let contentEnd = start;
-    while (contentEnd < text.length && text[contentEnd] !== "\n" && text[contentEnd] !== "\r") {
-      contentEnd += 1;
-    }
-
-    let end = contentEnd;
-    if (text[end] === "\r" && text[end + 1] === "\n") {
-      end += 2;
-    } else if (text[end] === "\r" || text[end] === "\n") {
-      end += 1;
-    }
-
-    lines.push({
-      text: text.slice(start, contentEnd),
-      start,
-      contentEnd,
-      end,
-      number,
-    });
-    start = end;
-    number += 1;
-  }
-
-  if (text.length === 0 || /[\r\n]$/.test(text)) {
-    lines.push({
-      text: "",
-      start: text.length,
-      contentEnd: text.length,
-      end: text.length,
-      number,
-    });
-  }
-
-  return lines;
-}
-
 function locationForSpan(resource: string, text: string, span: TextSpan): SourceLocation {
-  const coordinateAt = (offset: number) => {
-    let line = 1;
-    let lineStart = 0;
-
-    for (let index = 0; index < offset; index += 1) {
-      if (text[index] === "\r") {
-        if (text[index + 1] === "\n") index += 1;
-        line += 1;
-        lineStart = index + 1;
-      } else if (text[index] === "\n") {
-        line += 1;
-        lineStart = index + 1;
-      }
-    }
-
-    return { line, column: offset - lineStart + 1 };
-  };
-
   return {
     resource,
-    start: coordinateAt(span.start),
-    end: coordinateAt(span.end),
+    start: coordinateAt(text, span.start),
+    end: coordinateAt(text, span.end),
   };
 }
 
@@ -147,7 +80,7 @@ export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
     return structureError(message, resource, undefined, { offset, line, column });
   }
 
-  const lines = getLines(suppression.text);
+  const lines = getTextLines(suppression.text);
 
   for (const line of lines) {
     const parsed = parseMarkerLine(line.text, {

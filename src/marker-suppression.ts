@@ -1,4 +1,5 @@
 import { hasMarkerKind } from "./marker-parser.js";
+import { getTextLines, type TextLine } from "./text-index.js";
 
 export interface SuppressionDiagnostic {
   message: string;
@@ -12,48 +13,13 @@ export interface SuppressionResult {
   diagnostic?: SuppressionDiagnostic;
 }
 
-interface LineRecord {
-  text: string;
-  start: number;
-  contentEnd: number;
-  end: number;
-  number: number;
-}
-
 const DIRECTIVE = /(?<![A-Za-z0-9_-])write-once-ignore-(next|start|end)(?![A-Za-z0-9_-])/g;
 
-function getLines(text: string): LineRecord[] {
-  const lines: LineRecord[] = [];
-  let start = 0;
-  let number = 1;
-
-  while (start < text.length) {
-    let contentEnd = start;
-    while (contentEnd < text.length && text[contentEnd] !== "\n" && text[contentEnd] !== "\r") {
-      contentEnd += 1;
-    }
-
-    let end = contentEnd;
-    if (text[end] === "\r" && text[end + 1] === "\n") end += 2;
-    else if (text[end] === "\r" || text[end] === "\n") end += 1;
-
-    lines.push({ text: text.slice(start, contentEnd), start, contentEnd, end, number });
-    start = end;
-    number += 1;
-  }
-
-  if (text.length === 0 || /[\r\n]$/.test(text)) {
-    lines.push({ text: "", start: text.length, contentEnd: text.length, end: text.length, number });
-  }
-
-  return lines;
-}
-
-function diagnostic(message: string, line: LineRecord, offset = line.start): SuppressionDiagnostic {
+function diagnostic(message: string, line: TextLine, offset = line.start): SuppressionDiagnostic {
   return { message, offset, line: line.number, column: offset - line.start + 1 };
 }
 
-function maskLine(characters: string[], line: LineRecord): void {
+function maskLine(characters: string[], line: TextLine): void {
   for (let index = line.start; index < line.contentEnd; index += 1) characters[index] = " ";
 }
 
@@ -62,10 +28,10 @@ function maskLine(characters: string[], line: LineRecord): void {
  * scanner can preserve source spans while ignoring selected fragments.
  */
 export function applySuppressionDirectives(text: string): SuppressionResult {
-  const lines = getLines(text);
+  const lines = getTextLines(text);
   const characters = text.split("");
-  let regionStart: LineRecord | undefined;
-  let pendingNext: LineRecord | undefined;
+  let regionStart: TextLine | undefined;
+  let pendingNext: TextLine | undefined;
   let skippingNext = false;
 
   for (const line of lines) {
