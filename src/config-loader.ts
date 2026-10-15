@@ -22,8 +22,9 @@ async function exists(path: string): Promise<boolean> {
   try {
     await access(path);
     return true;
-  } catch {
-    return false;
+  } catch (cause) {
+    if (cause instanceof Error && "code" in cause && cause.code === "ENOENT") return false;
+    throw cause;
   }
 }
 
@@ -55,14 +56,19 @@ export async function loadWriteOnceConfig(options: LoadWriteOnceConfigOptions) {
   if (options.configPath !== undefined) {
     configFile = resolve(cwd, options.configPath);
   } else {
-    const candidates = await discoverConfigFiles(cwd);
-    if (candidates.length > 1) {
-      return loadError(
-        "Multiple write-once configuration files were found. Select one with --config <path>.",
-        { cwd, candidates },
-      );
+    try {
+      const candidates = await discoverConfigFiles(cwd);
+      if (candidates.length > 1) {
+        return loadError(
+          "Multiple write-once configuration files were found. Select one with --config <path>.",
+          { cwd, candidates },
+        );
+      }
+      configFile = candidates[0];
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : String(cause);
+      return loadError(`Could not discover write-once config files: ${reason}`, { cwd, cause });
     }
-    configFile = candidates[0];
   }
 
   try {
