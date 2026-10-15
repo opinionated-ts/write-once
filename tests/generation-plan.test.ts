@@ -247,6 +247,35 @@ describe("planDestinationFile", () => {
     await reader.clear();
   });
 
+  it("builds output correctly for many non-overlapping replacements", async () => {
+    const root = await createProject();
+    const source = join(root, "source.md");
+    await writeFile(source, "generated", "utf8");
+    const blocks = Array.from({ length: 120 }, (_, index) => [
+      `before-${index}`,
+      `fragment source="./source.md"`,
+      `old-${index}`,
+      "/fragment",
+    ]).flat();
+    const text = blocks.join("\n");
+
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text,
+      config: normalized(root),
+    });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) {
+      expect(result.value.replacements).toHaveLength(120);
+      for (let index = 0; index < 120; index += 1) {
+        expect(result.value.outputText).toContain(
+          `before-${index}\nfragment source="./source.md"\ngenerated\n/fragment`,
+        );
+      }
+    }
+  });
+
   it("rejects malformed and nested generated destinations before writing", async () => {
     const root = await createProject();
     const malformed = await planDestinationFile({

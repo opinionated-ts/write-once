@@ -497,15 +497,14 @@ export async function planDestinationFile(options: PlanDestinationOptions) {
     }
   }
 
-  let outputText = text;
-  for (const replacement of replacements.toSorted(
-    (left, right) => right.span.start - left.span.start,
-  )) {
-    outputText =
-      outputText.slice(0, replacement.span.start) +
-      replacement.text +
-      outputText.slice(replacement.span.end);
+  const outputParts: string[] = [];
+  let cursor = 0;
+  for (const replacement of byStart) {
+    outputParts.push(text.slice(cursor, replacement.span.start), replacement.text);
+    cursor = replacement.span.end;
   }
+  outputParts.push(text.slice(cursor));
+  const outputText = outputParts.join("");
 
   if (ownsReader) await reader.clear();
   return ok({ destination, originalText: text, outputText, replacements });
