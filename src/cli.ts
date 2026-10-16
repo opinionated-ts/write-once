@@ -2,6 +2,7 @@ import { defineCommand, runMain } from "citty";
 
 import { runGenerate } from "./cli/generate.js";
 import { formatDiagnostic } from "./diagnostics.js";
+import { CLI_VERSION } from "./version.js";
 
 const generateCommand = defineCommand({
   meta: {
@@ -41,7 +42,7 @@ const generateCommand = defineCommand({
 const mainCommand = defineCommand({
   meta: {
     name: "write-once",
-    version: "0.1.0",
+    version: CLI_VERSION,
     description: "Update generated destination blocks from source content.",
   },
   subCommands: {

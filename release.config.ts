@@ -7,7 +7,12 @@ export default {
   plugins: [
     ...semanticReleaseConfig.plugins,
 
-    // Custom plugins here
+    [
+      "@semantic-release/exec",
+      {
+        prepareCmd: "bun run scripts/set-cli-version.ts ${nextRelease.version}",
+      },
+    ],
     "@semantic-release/npm", // → publish to npm if needed
   ],
 } satisfies Options;

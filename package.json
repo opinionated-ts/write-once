@@ -55,7 +55,8 @@
     "build:watch": "tsdown --watch",
     "start": "bun run build && bun ./dist/cli.mjs",
     "generate:schema": "bun scripts/generate-schema.ts",
-    "write-once": "bun dist/cli.mjs"
+    "write-once": "bun dist/cli.mjs",
+    "prepack": "bun run build"
   },
   "dependencies": {
     "@opinionated-ts/error-factory": "^1.0.1",
@@ -67,6 +68,7 @@
   },
   "devDependencies": {
     "@opinionated-ts/config": "^1.9.1",
+    "@semantic-release/exec": "^7.1.0",
     "@types/bun": "^1.4.2",
     "@types/node": "^26.6.4",
     "@vitest/coverage-istanbul": "5.0.3",
