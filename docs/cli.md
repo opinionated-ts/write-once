@@ -1,6 +1,6 @@
 # CLI workflow
 
-The v1 command is:
+Use the CLI to synchronize generated fragments after editing their source content. The v1 command is:
 
 ```sh
 write-once generate
@@ -45,6 +45,4 @@ The v1 CLI does not provide `check` or dry-run modes. Remote resolvers and langu
 **Other guides:**
 
 - [Public TypeScript API](api.md)
-- [JSON configuration](json-configuration.md)
-- [YAML configuration](yaml-configuration.md)
 - [README and quick start](../README.md)

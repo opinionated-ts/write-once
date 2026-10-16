@@ -23,7 +23,6 @@ See [Configuration](configuration.md) for file discovery, defaults, and the reco
 **Recommended next:**
 
 - [Configuration](configuration.md)
-- [JSON configuration](json-configuration.md)
 
 **Other guides:**
 

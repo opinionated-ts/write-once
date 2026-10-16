@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration is optional. Without a config file, write-once uses the CLI working directory as its project `root`, includes `**/*`, and excludes Git metadata and dependency directories with `**/.git/**` and `**/node_modules/**`.
+You can use write-once without a configuration file. By default, it processes files under the directory where you run the command, discovers `**/*`, and excludes Git metadata and dependency directories (`.git` and `node_modules`). Add a config when you want to narrow discovery or customize generation.
 
 ## File discovery
 
@@ -68,8 +68,8 @@ JSON and YAML are supported for static configuration, but cannot express executa
 - If `include` is omitted, the default is `**/*`.
 - If `exclude` is omitted, `.git` and `node_modules` directories are excluded. Set `exclude: []` to disable those defaults.
 - `respectGitignore` defaults to `true` and applies root and nested `.gitignore` rules during discovery. Set it to `false` to ignore `.gitignore` files; `include` and `exclude` still apply.
-- `maxConcurrency` caps concurrent directory discovery, destination reads/scans, preparation batches, source-resolution operations, and source reads. Its normalized default is unlimited, while the internal worker pool keeps an eight-worker safety window when no explicit cap is set; source loading uses a four-worker window to keep memory pressure bounded. Destination extraction and hooks run in source order to preserve observable hook behavior.
-- `memoryBudgetMiB` defaults to `256` MiB and sets the approximate budget for cached source text. It must be a positive finite number. Inactive cached text is spilled to a private temporary file when needed and removed after its final consumer; the original source file is read once per run. Budget enforcement considers both retained UTF-16 payload bytes and observed process heap growth above the reader's starting baseline; process heap usage is an imperfect proxy for memory attributable to source text. A single source larger than the budget can still be processed.
+- `maxConcurrency` limits parallel file discovery and source processing. Leave it unset to use the built-in concurrency limits, or set a positive number to reduce parallel work.
+- `memoryBudgetMiB` sets the approximate memory budget for cached source text and defaults to `256` MiB. It must be a positive finite number. Large sources can still be processed when they exceed the budget.
 - `preparers`, `resolvers`, `extractors`, and `hooks` are programmatic extension points available in TypeScript or JavaScript config files.
 
 ## Security
@@ -85,7 +85,5 @@ TypeScript and JavaScript config files execute user code when loaded. Only load 
 
 **Other guides:**
 
-- [Public TypeScript API](api.md)
-- [JSON configuration](json-configuration.md)
-- [YAML configuration](yaml-configuration.md)
+- [TypeScript API](api.md)
 - [README and quick start](../README.md)

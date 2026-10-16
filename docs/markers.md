@@ -1,6 +1,6 @@
 # Markers and selectors
 
-write-once recognizes language-agnostic text tokens. It does not parse or validate the host language, comment syntax, or wrapper format.
+Markers tell write-once which text to reuse and where to place it. They are language-agnostic: write-once reads the marker tokens as plain text and does not parse the surrounding language or comment syntax.
 
 ## Destination blocks
 
@@ -178,6 +178,4 @@ For example, `range="2:3-3:1"` starts at the third UTF-16 code unit on line 2 an
 **Other guides:**
 
 - [Public TypeScript API](api.md)
-- [JSON configuration](json-configuration.md)
-- [YAML configuration](yaml-configuration.md)
 - [README and quick start](../README.md)
