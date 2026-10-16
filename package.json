@@ -1,5 +1,15 @@
 {
   "name": "write-once",
+  "description": "Keep documentation, AI instructions, skills, and code examples in sync from a single source of truth. Reuse text across files with simple markers and avoid duplicated edits.",
+  "keywords": [
+    "content-synchronization",
+    "documentation-sync",
+    "fragment-reuse",
+    "single-source-of-truth",
+    "text-reuse",
+    "text-synchronization",
+    "write-once"
+  ],
   "homepage": "https://github.com/opinionated-ts/write-once#readme",
   "bugs": {
     "url": "https://github.com/opinionated-ts/write-once/issues"
