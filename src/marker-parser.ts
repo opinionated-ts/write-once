@@ -78,7 +78,7 @@ function findMarker(line: string) {
   return found[0];
 }
 
-/** Return whether a line contains a marker recognized by the parser's boundary rules. */
+// Return whether a line contains a marker recognized by the parser's boundary rules.
 export function hasMarkerKind(lineText: string, kind: "open" | "close"): boolean {
   const marker = findMarker(lineText);
   if (marker === undefined || marker.start < 0 || marker.kind !== kind) return false;
@@ -196,12 +196,10 @@ function makeSyntaxError(
   );
 }
 
-/**
- * Parse one line for a language-agnostic fragment marker.
- * Host-language comments and wrapper syntax are treated as opaque text.
- * Offsets and columns use UTF-16 code units; line and column coordinates are 1-based.
- * A line without a marker succeeds with undefined.
- */
+// Parse one line for a language-agnostic fragment marker.
+// Host-language comments and wrapper syntax are treated as opaque text.
+// Offsets and columns use UTF-16 code units; line and column coordinates are 1-based.
+// A line without a marker succeeds with undefined.
 export function parseMarkerLine(lineText: string, options: ParseMarkerLineOptions = {}) {
   const resource = options.resource ?? "<input>";
   const offset = options.offset ?? 0;

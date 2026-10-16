@@ -23,10 +23,8 @@ function maskLine(characters: string[], line: TextLine): void {
   for (let index = line.start; index < line.contentEnd; index += 1) characters[index] = " ";
 }
 
-/**
- * Masks suppressed lines without changing offsets or line endings, so the marker
- * scanner can preserve source spans while ignoring selected fragments.
- */
+// Masks suppressed lines without changing offsets or line endings, so the marker
+// scanner can preserve source spans while ignoring selected fragments.
 export function applySuppressionDirectives(text: string): SuppressionResult {
   const lines = getTextLines(text);
   const characters = text.split("");

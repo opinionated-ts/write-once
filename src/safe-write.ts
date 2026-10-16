@@ -44,7 +44,7 @@ interface SafeWriteOperations {
   beforeRename?: (destination: string) => Promise<void>;
 }
 
-/** Internal test seam for deterministic rename-failure coverage. */
+// Internal test seam for deterministic rename-failure coverage.
 export async function writeDestinationPlansWithOperations(
   plans: readonly DestinationPlan[],
   operations: SafeWriteOperations,
@@ -159,7 +159,7 @@ export async function writeDestinationPlansWithOperations(
   return { written, unchanged, diagnostics };
 }
 
-/** Atomically replace changed destination files using temporary sibling files. */
+// Atomically replace changed destination files using temporary sibling files.
 export function writeDestinationPlans(plans: readonly DestinationPlan[]): Promise<SafeWriteResult> {
   return writeDestinationPlansWithOperations(plans, { rename: renameFile });
 }

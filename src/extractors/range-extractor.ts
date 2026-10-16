@@ -96,7 +96,7 @@ function extractRangeResult(
   });
 }
 
-/** Extracts a precise UTF-16 line-and-column range from source text. */
+// Extracts a precise UTF-16 line-and-column range from source text.
 export function createRangeExtractor(sourceIndexes?: SourceIndexCache) {
   return {
     id: "line-column-range-text",

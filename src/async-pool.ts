@@ -1,4 +1,4 @@
-/** Run indexed work with bounded concurrency, preserving result order. */
+// Run indexed work with bounded concurrency, preserving result order.
 export async function mapConcurrent<T, R>(
   items: readonly T[],
   concurrency: number,

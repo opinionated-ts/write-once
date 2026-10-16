@@ -41,7 +41,7 @@ function fail(
   });
 }
 
-/** Normalize and validate a resolver location, including symlink containment. */
+// Normalize and validate a resolver location, including symlink containment.
 export async function normalizeResolvedResource(
   value: unknown,
   source: string,

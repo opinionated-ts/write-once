@@ -47,7 +47,7 @@ class SourceLoadFailure extends Error {
   }
 }
 
-/** Run generation without coupling command output to the pipeline. */
+// Run generation without coupling command output to the pipeline.
 export async function runGenerate(options: GenerateOptions = {}): Promise<GenerateResult> {
   const cwd = options.cwd ?? process.cwd();
   const loaded = await loadWriteOnceConfig({

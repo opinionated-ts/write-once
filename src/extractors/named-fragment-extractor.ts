@@ -81,7 +81,7 @@ function extractNamedFragmentResult(
   });
 }
 
-/** Extracts a named read-only declaration from one resolved resource. */
+// Extracts a named read-only declaration from one resolved resource.
 export function createNamedFragmentExtractor(sourceIndexes?: SourceIndexCache) {
   return {
     id: "named-fragment-text",

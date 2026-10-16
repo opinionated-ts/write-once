@@ -94,7 +94,7 @@ export interface RangeSelector {
 /** The built-in source-selection modes supported by v1. */
 export type SourceSelector = WholeSourceSelector | NamedFragmentSelector | RangeSelector;
 
-/** A manually maintained, read-only named declaration. */
+// A manually maintained, read-only named declaration.
 export interface NamedDeclaration {
   name: string;
   marker: MarkerBlock;
@@ -102,7 +102,7 @@ export interface NamedDeclaration {
   location: SourceLocation;
 }
 
-/** A generated destination whose content comes from a resolved source. */
+// A generated destination whose content comes from a resolved source.
 export interface GeneratedDestination {
   source: string;
   selector: SourceSelector;

@@ -8,11 +8,13 @@ import type { NormalizedWriteOnceConfig } from "./config.js";
 import { validateConfig } from "./config.js";
 import { ConfigLoadError } from "./errors/config-load-error.js";
 
+/** Options for locating and loading a Write Once configuration file. */
 export interface LoadWriteOnceConfigOptions {
   cwd: string;
   configPath?: string;
 }
 
+/** The validated configuration and its resolved file location. */
 export interface LoadedWriteOnceConfig {
   config: NormalizedWriteOnceConfig;
   configFile?: string;

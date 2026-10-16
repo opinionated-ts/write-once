@@ -8,7 +8,7 @@ export interface TextLine {
   number: number;
 }
 
-/** Split text without normalizing LF, CRLF, or lone-CR line endings. */
+// Split text without normalizing LF, CRLF, or lone-CR line endings.
 export function getTextLines(text: string): TextLine[] {
   const lines: TextLine[] = [];
   let start = 0;
@@ -42,7 +42,7 @@ export function getTextLines(text: string): TextLine[] {
   return lines;
 }
 
-/** Return the 1-based line and UTF-16 column using precomputed line offsets. */
+// Return the 1-based line and UTF-16 column using precomputed line offsets.
 export function coordinateAtOffset(lines: readonly TextLine[], offset: number): TextCoordinate {
   let low = 0;
   let high = lines.length - 1;
@@ -68,7 +68,7 @@ export function coordinateAtOffset(lines: readonly TextLine[], offset: number): 
     : { line: last.number, column: offset - last.start + 1 };
 }
 
-/** Return the 1-based line and UTF-16 column for a source offset. */
+// Return the 1-based line and UTF-16 column for a source offset.
 export function coordinateAt(text: string, offset: number): TextCoordinate {
   let line = 1;
   let column = 1;

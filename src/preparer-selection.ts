@@ -11,7 +11,7 @@ export class PreparerTriggerError extends Error {
   }
 }
 
-/** Select the first preparer whose synchronous trigger accepts a reference. */
+// Select the first preparer whose synchronous trigger accepts a reference.
 export function selectPreparer(
   preparers: readonly ResourcePreparer[],
   reference: SourceReferenceContext,
@@ -34,7 +34,7 @@ export interface PreparerReferenceAssignments {
   unassigned: SourceReferenceContext[];
 }
 
-/** Group references by their first matching preparer without invoking preparation. */
+// Group references by their first matching preparer without invoking preparation.
 export function assignPreparerReferences(
   preparers: readonly ResourcePreparer[],
   references: readonly SourceReferenceContext[],

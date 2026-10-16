@@ -30,7 +30,7 @@ function isLocalPath(source: string): boolean {
   );
 }
 
-/** Resolves local text files relative to the configured project root. */
+// Resolves local text files relative to the configured project root.
 export const localSourceResolver: ResourceResolver = {
   id: "local-file",
   canResolve(source: string, _context: ResourceContext): boolean {

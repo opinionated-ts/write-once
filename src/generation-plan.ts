@@ -36,7 +36,7 @@ export interface PlanDestinationOptions {
   preparations?: readonly PreparedResourceBatch[];
   reader?: ResourceReader;
   resolved?: ReadonlyMap<string, ResolvedReference>;
-  /** Internal derived indexes shared for the lifetime of one generation run. */
+  // Internal derived indexes shared for the lifetime of one generation run.
   sourceIndexCache?: SourceIndexCache;
 }
 
@@ -135,7 +135,7 @@ export function selectorFor(source: string, name?: string, range?: string) {
   });
 }
 
-/** Scan one destination once and collect source references with selector context. */
+// Scan one destination once and collect source references with selector context.
 export function scanDestinationFile(destination: string, text: string) {
   const scanned = scanMarkers(text, { resource: destination });
   if (isFailure(scanned)) {
@@ -417,10 +417,8 @@ async function planBlock(
   return ok(replacement);
 }
 
-/**
- * Prepare a destination output in memory. This function never writes files.
- * Compatible capabilities are selected in registration order.
- */
+// Prepare a destination output in memory. This function never writes files.
+// Compatible capabilities are selected in registration order.
 export async function planDestinationFile(options: PlanDestinationOptions) {
   const { destination, text, config } = options;
   const scan =

@@ -17,7 +17,7 @@ interface CachedSourceIndexes {
   lines?: TextLine[];
 }
 
-/** Create indexes scoped to one generation run; callers must clear them at run completion. */
+// Create indexes scoped to one generation run; callers must clear them at run completion.
 export function createSourceIndexCache(): SourceIndexCache {
   const indexes = new Map<string, CachedSourceIndexes>();
 

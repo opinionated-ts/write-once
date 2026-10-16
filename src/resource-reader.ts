@@ -37,12 +37,10 @@ interface CachedContent {
   remaining: number;
 }
 
-/**
- * Shares source reads by normalized identity and applies a per-run content budget.
- * The budget accounts for retained UTF-16 payload bytes and observed process heap growth.
- * Inactive cached strings spill to a private temporary file when the budget is reached;
- * the original source is still read only once per run.
- */
+// Shares source reads by normalized identity and applies a per-run content budget.
+// The budget accounts for retained UTF-16 payload bytes and observed process heap growth.
+// Inactive cached strings spill to a private temporary file when the budget is reached;
+// the original source is still read only once per run.
 export function createResourceReader(
   readText: ReadText = (path) => readFile(path, "utf8"),
   memoryBudgetMiB = Number.POSITIVE_INFINITY,

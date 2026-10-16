@@ -14,7 +14,7 @@ import { applySuppressionDirectives } from "./marker-suppression.js";
 import { coordinateAtOffset, getTextLines } from "./text-index.js";
 
 export interface ScanMarkersOptions {
-  /** Identifier included in diagnostics. Defaults to "<input>". */
+  // Identifier included in diagnostics. Defaults to "<input>".
   resource?: string;
 }
 
@@ -68,10 +68,8 @@ function structureError(
   );
 }
 
-/**
- * Scans marker lines and pairs blocks without reading files or interpreting
- * host-language syntax. Delimiter lines are retained verbatim in their spans.
- */
+// Scans marker lines and pairs blocks without reading files or interpreting
+// host-language syntax. Delimiter lines are retained verbatim in their spans.
 export function scanMarkers(text: string, options: ScanMarkersOptions = {}) {
   const resource = options.resource ?? "<input>";
   const stack: OpenMarker[] = [];

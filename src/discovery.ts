@@ -71,7 +71,7 @@ function isGitIgnored(
   return ignored;
 }
 
-/** Discover destination files in deterministic order using Git-ignore-style patterns. */
+// Discover destination files in deterministic order using Git-ignore-style patterns.
 export async function discoverDestinationFiles(
   config: NormalizedWriteOnceConfig,
 ): Promise<FileDiscoveryResult> {

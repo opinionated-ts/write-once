@@ -113,7 +113,7 @@ function validatePreparationResult(
   };
 }
 
-/** Batch all references first, then invoke each selected preparer once in registration order. */
+// Batch all references first, then invoke each selected preparer once in registration order.
 export async function prepareSourceReferences(
   references: readonly SourceReferenceContext[],
   config: NormalizedWriteOnceConfig,
@@ -189,7 +189,7 @@ export async function prepareSourceReferences(
   }
 }
 
-/** Remove per-run temporary resource directories after planning and writes finish. */
+// Remove per-run temporary resource directories after planning and writes finish.
 export async function cleanupPreparedResources(resources: PreparedSourceResources): Promise<void> {
   await Promise.all(
     resources.workingDirectories.map((directory) =>

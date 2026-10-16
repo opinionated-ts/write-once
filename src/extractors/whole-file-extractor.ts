@@ -49,7 +49,7 @@ function extractWholeFileResult(resource: ResolvedContent, selector: SourceSelec
   });
 }
 
-/** Extracts the complete text from a resource without normalizing its content. */
+// Extracts the complete text from a resource without normalizing its content.
 export const wholeFileExtractor = {
   id: "whole-file-text",
   canExtract(_resource: ResolvedContent, selector: SourceSelector, _context: ResourceContext) {

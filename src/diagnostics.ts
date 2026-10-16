@@ -2,7 +2,7 @@ import pc from "picocolors";
 
 import type { Diagnostic } from "./types.js";
 
-/** Render one diagnostic in a concise, linter-style format. */
+// Render one diagnostic in a concise, linter-style format.
 export function formatDiagnostic(diagnostic: Diagnostic): string {
   const label = diagnostic.severity === "warning" ? "warn" : diagnostic.severity;
   const styledLabel =

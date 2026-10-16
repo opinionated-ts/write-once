@@ -13,6 +13,7 @@ import { ConfigValidationError } from "./errors/config-validation-error.js";
 
 export const DEFAULT_EXCLUDE_PATTERNS = ["**/.git/**", "**/node_modules/**"] as const;
 
+/** Options for configuring a Write Once generation run. */
 export interface UserConfig {
   root?: string;
   include?: readonly string[];
@@ -44,6 +45,7 @@ export interface WriteOnceJsonConfig {
   memoryBudgetMiB?: number;
 }
 
+/** Validated configuration with defaults applied and paths resolved. */
 export interface NormalizedWriteOnceConfig {
   root: string;
   include: readonly string[];
