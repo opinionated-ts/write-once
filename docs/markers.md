@@ -6,19 +6,27 @@ write-once recognizes language-agnostic text tokens. It does not parse or valida
 
 Wrap markers in comments appropriate to the file:
 
+<!-- write-once-ignore-start -->
+
 ```md
 <!-- fragment source="./content.md" -->
 Generated content goes here.
 <!-- /fragment -->
 ```
 
+<!-- write-once-ignore-end -->
+
 The opening `fragment` token and closing `/fragment` token must be on separate lines. Marker tokens may appear inside comment wrappers or alongside unrelated text:
+
+<!-- write-once-ignore-start -->
 
 ```ts
 // Generated API reference: fragment source="./api.md"
 Old generated text.
 // /fragment — keep this heading
 ```
+
+<!-- write-once-ignore-end -->
 
 By default, write-once replaces only the text between the two complete delimiter lines. The opening and closing lines, including wrapper comments and surrounding text, remain unchanged. Multiple marker tokens on one line are rejected as ambiguous.
 
@@ -27,6 +35,8 @@ By default, write-once replaces only the text between the two complete delimiter
 Use language-agnostic suppression tokens to keep intentionally invalid examples in a document without disabling validation for the rest of the file. The tokens are recognized as plain text; their surrounding comment syntax is not interpreted.
 
 Ignore the next fragment block:
+
+<!-- write-once-ignore-start -->
 
 ```md
 <!-- write-once-ignore-next -->
@@ -37,6 +47,8 @@ This intentionally invalid example is left untouched.
 This fragment is still processed normally.
 <!-- /fragment -->
 ```
+
+<!-- write-once-ignore-end -->
 
 Ignore all fragments within a region:
 
@@ -57,11 +69,15 @@ Region directives cannot be nested. An end directive must match a start directiv
 
 A marker with `name` and no `source` declares a manually maintained fragment:
 
+<!-- write-once-ignore-start -->
+
 ```md
 <!-- fragment name="intro" -->
 This text is maintained by hand.
 <!-- /fragment -->
 ```
+
+<!-- write-once-ignore-end -->
 
 Declarations can be nested. Names are case-sensitive, and duplicate names within one source resource are errors.
 
@@ -85,13 +101,19 @@ Nested read-only declarations are supported. A generated destination cannot be n
 
 Whole source:
 
+<!-- write-once-ignore-start -->
+
 ```md
 <!-- fragment source="./docs/guide.md" -->
 Generated guide.
 <!-- /fragment -->
 ```
 
+<!-- write-once-ignore-end -->
+
 Named source:
+
+<!-- write-once-ignore-start -->
 
 ```md
 <!-- fragment source="./docs/fragments.md" name="intro" -->
@@ -99,11 +121,19 @@ Generated introduction.
 <!-- /fragment -->
 ```
 
+<!-- write-once-ignore-end -->
+
+<!-- write-once-ignore-start -->
+
 The source file for the second example must contain a matching declaration such as `fragment name="intro"`.
+
+<!-- write-once-ignore-end -->
 
 ## Ranges
 
 Use the explicit attribute:
+
+<!-- write-once-ignore-start -->
 
 ```md
 <!-- fragment source="./src/example.ts" range="10:5-14:1" -->
@@ -111,13 +141,19 @@ Generated selected lines.
 <!-- /fragment -->
 ```
 
+<!-- write-once-ignore-end -->
+
 Or append the range to the source reference:
+
+<!-- write-once-ignore-start -->
 
 ```md
 <!-- fragment source="./src/example.ts:10:5-14:1" -->
 Generated selected lines.
 <!-- /fragment -->
 ```
+
+<!-- write-once-ignore-end -->
 
 If both a source suffix and an explicit `range` attribute are present, the explicit attribute wins. The suffix is parsed from the right so Windows drive letters and colons in paths are preserved.
 

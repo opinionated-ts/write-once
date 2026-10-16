@@ -47,11 +47,15 @@ The content budget considers retained string payload using UTF-16 bytes and obse
 
 Given inline delimiter lines such as:
 
+<!-- write-once-ignore-start -->
+
 ```md
 before <!-- fragment source="./content.md" --> trailing
 old content
 suffix <!-- /fragment --> tail
 ```
+
+<!-- write-once-ignore-end -->
 
 A hook returning `{ text: content }` replaces only the body. The `before`, `trailing`, `suffix`, comment wrappers, and other delimiter-line text remain unchanged apart from the destination newline policy applied to inserted body text.
 
