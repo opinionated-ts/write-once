@@ -1,4 +1,4 @@
-import { isSuccess } from "@opinionated-ts/result";
+import { isFailure, isSuccess } from "@opinionated-ts/result";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -75,5 +75,39 @@ describe("registration-order selection", () => {
 
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) expect(result.value.outputText).toContain("first extractor");
+  });
+
+  it("does not fall through to another extractor when the selected extractor fails", async () => {
+    const { root, config } = await setup();
+    await writeFile(join(root, "source.md"), "source text", "utf8");
+    let fallbackCalled = false;
+    const extractors: ContentExtractor[] = [
+      {
+        id: "failing",
+        canExtract: () => true,
+        extract: () => {
+          throw new Error("selected extractor failed");
+        },
+      },
+      {
+        id: "fallback",
+        canExtract: () => true,
+        extract: () => {
+          fallbackCalled = true;
+          return { text: "fallback extractor" };
+        },
+      },
+    ];
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text: 'fragment source="./source.md"\nold\n/fragment',
+      config: { ...config, extractors },
+    });
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) {
+      expect(result.error.stage).toBe("extract");
+    }
+    expect(fallbackCalled).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ The project does not currently load, install, or discover third-party plugins au
 
 1. **Prepare resources.** For each source reference, the first preparer whose `canPrepare(reference, context)` returns `true` is selected. Write Once groups references by that preparer and calls `prepare` once for its batch.
 2. **Resolve the reference.** Resolvers are checked in registration order. Their `canResolve(source, context)` receives the reference's applicable context: if a preparer was selected, the context contains only that preparer's batch. A resolver can infer its association from the source and prepared context; no shared function identity, provider ID mapping, or separate registry is required. If no preparer claims the source, resolver-only handling remains possible with an empty `preparation`. The first compatible resolver wins; if none matches, generation reports a resolution diagnostic.
-3. **Load and extract content.** The core validates the resolver's root and relative path, loads source text, and selects the first compatible extractor. Configured extractors are checked before the built-in named-fragment, range, and whole-file extractors.
+3. **Load and extract content.** The core validates the resolver's root and relative path, loads source text, and selects the first compatible extractor. Configured extractors are checked before the built-in named-fragment, range, and whole-file extractors. Only one extractor handles a reference. If the selected extractor fails, generation reports the extraction failure; Write Once does not silently try another extractor.
 4. **Customize output.** The first registered `pre-write` hook runs for a generated block. Hooks are not chained. Without a matching hook, the extracted text is used as-is.
 5. **Write destinations.** The pipeline plans and validates destination output before writing. A failure during preparation, resolution, extraction, or a hook prevents destination writes for that generation plan. Writes are atomic per file, not across the entire project.
 
@@ -41,7 +41,7 @@ Use `context.preparation` to read the assigned batch's `references`, `result.res
 
 An extractor receives a `ResolvedContent` with already-loaded, read-only `text`, the selector, and the resource context. `canExtract` chooses which selectors or resource types it handles. `extract` returns `{ text, location?, metadata? }` and should perform content transformation only: do not fetch resources, mutate source text, or write destination files. Throwing an error or returning a failure through the optional `extractResult` contract produces an extraction diagnostic.
 
-Custom extractors run before the built-ins, so register a custom extractor before the defaults only when it deliberately handles that selector/resource combination. Language-aware symbol extraction is possible in a custom extractor that uses an appropriate parser, but Write Once does not provide semantic code analysis itself.
+Custom extractors run before the built-ins, so registration order determines which compatible extractor wins. A later extractor is not a fallback when the selected extractor throws or returns a failure. Language-aware symbol extraction is possible in a custom extractor that uses an appropriate parser, but Write Once does not provide semantic code analysis itself.
 
 ### `GenerationHook`
 
@@ -50,7 +50,7 @@ Hooks currently run at the `pre-write` stage. Return exactly one replacement sco
 - `{ text }` replaces only the generated body and preserves marker delimiters.
 - `{ fullText }` replaces the complete marker block, including delimiters.
 
-A hook should be deterministic and should not write destination files itself. Only the first matching `pre-write` hook runs, so combine transformations in one hook when they must run in sequence.
+A hook should be deterministic and should not write destination files itself. All `pre-write` hooks are intended to run in registration order; see the hook chaining policy below.
 
 ## Example provider plugin
 
@@ -169,7 +169,7 @@ export const textFenceHook = {
 } satisfies GenerationHook;
 ```
 
-Register the extractor and hook alongside the provider's capabilities. Remember that only one extractor and one `pre-write` hook are selected for each block; hooks do not form a pipeline. More advanced transformations, such as language-aware symbol or reference reuse, belong in custom extractors or a single hook that explicitly composes the required steps. These capabilities are extension opportunities, not built-in semantic analysis.
+Register the extractor and hook alongside the provider's capabilities. Only one extractor is selected for each block. Hooks form a separate transformation pipeline: every compatible `pre-write` hook runs in registration order. More advanced transformations, such as language-aware symbol or reference reuse, belong in custom extractors or hooks that explicitly implement those transformations. These capabilities are extension opportunities, not built-in semantic analysis.
 
 ## Testing and operational guidance
 
