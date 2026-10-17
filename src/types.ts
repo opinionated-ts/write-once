@@ -296,8 +296,8 @@ export interface HookContext {
   source?: ResolvedContent;
 }
 
-/** A hook may replace the body, the complete block, or both representations. */
-export type HookOutput = { text?: string; fullText?: string };
+/** A hook replaces either the body or the complete block, never both. */
+export type HookOutput = { text: string; fullText?: never } | { text?: never; fullText: string };
 
 /**
  * Customizes content at a named generation stage.

@@ -98,5 +98,9 @@ describe("public types", () => {
 
     expect(bodyOutput.text).toBe("generated body");
     expect(fullOutput.fullText).toBe("<!-- custom block -->");
+
+    // @ts-expect-error A hook cannot return both replacement representations.
+    const invalidOutput: HookOutput = { text: "body", fullText: "full block" };
+    expect(invalidOutput).toBeDefined();
   });
 });

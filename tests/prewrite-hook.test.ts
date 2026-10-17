@@ -192,28 +192,6 @@ describe("pre-write hook contract", () => {
     }
   });
 
-  it("allows a hook to return both text and fullText", async () => {
-    const { root, config } = await setup();
-    const text = 'fragment source="./source.md"\nold\n/fragment';
-    const hook: GenerationHook = {
-      id: "both",
-      stage: "pre-write",
-      run: () => ({
-        text: "body",
-        fullText: 'fragment source="./source.md"\nfull\n/fragment',
-      }),
-    };
-
-    const result = await planDestinationFile({
-      destination: join(root, "README.md"),
-      text,
-      config: { ...config, hooks: [hook] },
-    });
-
-    expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) expect(result.value.outputText).toContain("body");
-  });
-
   it("surfaces rejected hooks and leaves destination files untouched", async () => {
     const { root, config } = await setup();
     const destination = join(root, "README.md");
