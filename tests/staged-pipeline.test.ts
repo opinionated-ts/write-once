@@ -56,7 +56,10 @@ export default {
         await new Promise((resolve) => setTimeout(resolve, 20));
         await writeFile(join(context.workingDirectory, "source.md"), "alpha content");
         await record(context.cwd, "alpha:end");
-        return { resources: [{ root: context.workingDirectory, references }] };
+        return {
+          resources: [{ root: context.workingDirectory, metadata: { source: references[0]?.source } }],
+          metadata: { count: references.length },
+        };
       },
     },
     {
@@ -66,7 +69,10 @@ export default {
         await record(context.cwd, "beta:start");
         await writeFile(join(context.workingDirectory, "source.md"), "beta content");
         await record(context.cwd, "beta:end");
-        return { resources: [{ root: context.workingDirectory, references }] };
+        return {
+          resources: [{ root: context.workingDirectory, metadata: { source: references[0]?.source } }],
+          metadata: { count: references.length },
+        };
       },
     },
   ],
@@ -77,7 +83,7 @@ export default {
       async resolve(source, context) {
         await record(context.cwd, "resolve:" + source);
         const resource = context.preparations?.flatMap((batch) => batch.result.resources).find(
-          (item) => item.references.some((reference) => reference.source === source),
+          (item) => item.metadata?.source === source,
         );
         if (resource === undefined) throw new Error("Prepared resource mapping missing.");
         return { root: resource.root, path: "source.md" };

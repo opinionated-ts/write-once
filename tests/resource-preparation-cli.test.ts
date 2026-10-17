@@ -49,10 +49,16 @@ export default {
       }));
       return {
         resources: [
-          { root: join(context.workingDirectory, "one"), references: [references[0]] },
-          { root: join(context.workingDirectory, "two"), references: references.slice(1) },
+          {
+            root: join(context.workingDirectory, "one"),
+            metadata: { source: references[0]?.source, path: "source.md" },
+          },
+          {
+            root: join(context.workingDirectory, "two"),
+            metadata: { source: references[1]?.source, path: "source.md" },
+          },
         ],
-        value: { count: references.length },
+        metadata: { count: references.length },
       };
     },
   }],
@@ -61,11 +67,16 @@ export default {
     canResolve: (source) => source.startsWith("repo:"),
     async resolve(source, context) {
       await appendFile(join(context.cwd, "events.log"), "resolve\\n");
-      const preparedResource = context.preparations?.[0]?.result.resources.find((resource) =>
-        resource.references.some((reference) => reference.source === source),
+      const preparation = context.preparations?.[0]?.result;
+      if (preparation?.metadata?.count !== 2) throw new Error("Batch metadata missing.");
+      const preparedResource = preparation.resources.find(
+        (resource) => resource.metadata?.source === source,
       );
       if (preparedResource === undefined) throw new Error("Prepared resource mapping missing.");
-      return { root: preparedResource.root, path: "source.md" };
+      return {
+        root: preparedResource.root,
+        path: String(preparedResource.metadata?.path),
+      };
     },
   }],
 };
@@ -110,7 +121,7 @@ export default {
     id: "repo",
     canPrepare: () => true,
     prepare: async (references) => ({
-      resources: [{ root: "../../outside", references }],
+      resources: [{ root: "../../outside" }],
     }),
   }],
 };
@@ -131,11 +142,15 @@ export default {
     expect(await readFile(destination, "utf8")).toBe(original);
   });
 
-  it("rejects prepared resources that claim references assigned to another preparer", async () => {
+  it.each(["resource", "batch"])("rejects non-object %s metadata", async (scope) => {
     const cwd = await createProject();
     const destination = join(cwd, "README.md");
-    const original = 'fragment source="repo:owned"\nold\n/fragment';
+    const original = 'fragment source="repo:invalid-metadata"\nold\n/fragment';
     await writeFile(destination, original, "utf8");
+    const resourceMetadata =
+      scope === "resource" ? "metadata: []" : "metadata: { source: references[0]?.source }";
+    const batchMetadata =
+      scope === "batch" ? "metadata: []" : "metadata: { count: references.length }";
     await writeFile(
       join(cwd, "write-once.config.ts"),
       `export default {
@@ -144,7 +159,8 @@ export default {
     id: "repo",
     canPrepare: () => true,
     prepare: async (references, context) => ({
-      resources: [{ root: context.workingDirectory, references: references.map((reference) => ({ ...reference, source: "repo:forged" })) }],
+      resources: [{ root: context.workingDirectory, ${resourceMetadata} }],
+      ${batchMetadata},
     }),
   }],
 };
@@ -155,8 +171,10 @@ export default {
     const result = await runGenerate({ cwd });
 
     expect(result.exitCode).toBe(1);
-    expect(result.diagnostics[0]?.stage).toBe("prepare");
-    expect(result.diagnostics[0]?.message).toContain("not assigned to this preparer");
+    expect(result.diagnostics[0]).toMatchObject({
+      stage: "prepare",
+      message: expect.stringContaining("valid prepared resources and object metadata"),
+    });
     expect(await readFile(destination, "utf8")).toBe(original);
   });
 

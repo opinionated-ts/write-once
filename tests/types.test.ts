@@ -61,8 +61,8 @@ describe("public types", () => {
       id: "repository",
       canPrepare: (reference) => reference.source.startsWith("repo:"),
       prepare: async (_references, context) => ({
-        resources: [{ root: context.workingDirectory, references: [] }],
-        value: { cacheKey: "opaque-to-core" },
+        resources: [{ root: context.workingDirectory, metadata: { revision: "main" } }],
+        metadata: { cacheKey: "opaque-to-core" },
       }),
     };
 

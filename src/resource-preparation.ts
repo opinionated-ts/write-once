@@ -43,29 +43,12 @@ function safeDirectoryName(id: string): string {
   return id.replace(/[^A-Za-z0-9._-]/g, "-") || "preparer";
 }
 
-function referenceKey(reference: SourceReferenceContext): string {
-  return `${reference.destination}\0${reference.marker.span.start}\0${reference.source}`;
-}
-
-function isSourceReferenceContext(value: unknown): value is SourceReferenceContext {
-  return (
-    isRecord(value) &&
-    typeof value["source"] === "string" &&
-    typeof value["destination"] === "string" &&
-    isRecord(value["selector"]) &&
-    ["whole", "named", "range"].includes(String(value["selector"]["kind"])) &&
-    isRecord(value["marker"]) &&
-    isRecord(value["marker"]["span"]) &&
-    typeof value["marker"]["span"]["start"] === "number"
-  );
-}
-
 function isPreparedResource(value: unknown): value is PreparedResource {
   return (
     isRecord(value) &&
     typeof value["root"] === "string" &&
-    Array.isArray(value["references"]) &&
-    value["references"].every(isSourceReferenceContext)
+    value["root"].length > 0 &&
+    (value["metadata"] === undefined || isRecord(value["metadata"]))
   );
 }
 
@@ -73,34 +56,27 @@ function isResourcePreparationResult(value: unknown): value is ResourcePreparati
   return (
     isRecord(value) &&
     Array.isArray(value["resources"]) &&
-    value["resources"].every(isPreparedResource)
+    value["resources"].every(isPreparedResource) &&
+    (value["metadata"] === undefined || isRecord(value["metadata"]))
   );
 }
 
 function validatePreparationResult(
   value: unknown,
-  references: readonly SourceReferenceContext[],
   workingDirectory: string,
 ): ResourcePreparationResult {
   if (!isResourcePreparationResult(value)) {
-    throw new TypeError("prepare() must return an object with valid prepared resources.");
+    throw new TypeError(
+      "prepare() must return an object with valid prepared resources and object metadata.",
+    );
   }
 
-  const assignedKeys = new Set(references.map(referenceKey));
   for (const resource of value.resources) {
     const root = resolve(workingDirectory, resource.root);
     if (!isWithin(workingDirectory, root)) {
       throw new TypeError(
         "A prepared resource root must remain inside its assigned working directory.",
       );
-    }
-
-    for (const reference of resource.references) {
-      if (!assignedKeys.has(referenceKey(reference))) {
-        throw new TypeError(
-          "A prepared resource references a source not assigned to this preparer.",
-        );
-      }
     }
   }
 
@@ -168,7 +144,7 @@ export async function prepareSourceReferences(
             preparerId: preparer.id,
             workingDirectory,
             references: batchReferences,
-            result: validatePreparationResult(result, batchReferences, workingDirectory),
+            result: validatePreparationResult(result, workingDirectory),
           };
         } catch (cause) {
           throw new ResourcePreparationFailure(

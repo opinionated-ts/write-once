@@ -144,18 +144,18 @@ export interface ResourcePreparationContext {
   workingDirectory: string;
 }
 
-/** A resource root materialized by a preparer for the references it serves. */
+/** A resource root materialized by a preparation batch. */
 export interface PreparedResource {
   root: string;
-  references: readonly SourceReferenceContext[];
+  /** Provider-specific state for this resource, distinct from batch metadata. */
   metadata?: Readonly<Record<string, unknown>>;
 }
 
-/** Resources and opaque provider data returned by one preparation batch. */
+/** Resources and provider-specific metadata returned by one preparation batch. */
 export interface ResourcePreparationResult {
   resources: readonly PreparedResource[];
-  /** Provider-specific state remains opaque to the core. */
-  value?: unknown;
+  /** Provider-specific state shared by the entire preparation batch. */
+  metadata?: Readonly<Record<string, unknown>>;
 }
 
 /**
