@@ -67,7 +67,7 @@ export default {
     canResolve: (source) => source.startsWith("repo:"),
     async resolve(source, context) {
       await appendFile(join(context.cwd, "events.log"), "resolve\\n");
-      const preparation = context.preparations?.[0]?.result;
+      const preparation = context.preparation?.result;
       if (preparation?.metadata?.count !== 2) throw new Error("Batch metadata missing.");
       const preparedResource = preparation.resources.find(
         (resource) => resource.metadata?.source === source,
@@ -136,9 +136,9 @@ export default {
   }],
   resolvers: [{
     id: "example",
-    canResolve: (source, context) => source.startsWith("example:") && context.preparations?.[0] !== undefined,
+    canResolve: (source, context) => source.startsWith("example:") && context.preparation !== undefined,
     resolve: (source, context) => ({
-      root: context.preparations![0]!.result.resources[0]!.root,
+      root: context.preparation!.result.resources[0]!.root,
       path: source.slice("example:".length) + ".md",
     }),
   }],
@@ -215,7 +215,7 @@ export default {
     id: "repo",
     canResolve: (source) => source.startsWith("repo:"),
     resolve: (_source, context) => ({
-      root: join(context.preparations[0].workingDirectory, "unrelated"),
+      root: join(context.preparation!.workingDirectory, "unrelated"),
       path: "source.md",
     }),
   }],

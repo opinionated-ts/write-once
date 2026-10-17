@@ -232,7 +232,7 @@ export async function resolveSourceReferences(
       cwd: config.root,
       destination,
       reference,
-      preparations: relevantPreparation === undefined ? [] : [relevantPreparation],
+      preparation: relevantPreparation,
     };
     let resolver: ResourceResolver | undefined;
     try {

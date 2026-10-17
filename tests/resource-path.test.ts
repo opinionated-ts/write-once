@@ -68,14 +68,12 @@ describe("normalizeResolvedResource", () => {
     await writeFile(join(preparedRoot, "source.md"), "prepared", "utf8");
     const context: ResourceContext = {
       cwd: workingDirectory,
-      preparations: [
-        {
-          preparerId: "repository",
-          workingDirectory,
-          references: [],
-          result: { resources: [{ root: preparedRoot }] },
-        },
-      ],
+      preparation: {
+        preparerId: "repository",
+        workingDirectory,
+        references: [],
+        result: { resources: [{ root: preparedRoot }] },
+      },
     };
 
     const result = await normalizeResolvedResource(
@@ -98,14 +96,12 @@ describe("normalizeResolvedResource", () => {
     await writeFile(join(unrelatedRoot, "source.md"), "unrelated", "utf8");
     const context: ResourceContext = {
       cwd: workingDirectory,
-      preparations: [
-        {
-          preparerId: "repository",
-          workingDirectory,
-          references: [],
-          result: { resources: [{ root: preparedRoot }] },
-        },
-      ],
+      preparation: {
+        preparerId: "repository",
+        workingDirectory,
+        references: [],
+        result: { resources: [{ root: preparedRoot }] },
+      },
     };
 
     await expect(
@@ -193,14 +189,12 @@ describe("normalizeResolvedResource", () => {
           "repository",
           {
             cwd: workingDirectory,
-            preparations: [
-              {
-                preparerId: "repository",
-                workingDirectory,
-                references: [],
-                result: { resources: [{ root: join(workingDirectory, "escaped") }] },
-              },
-            ],
+            preparation: {
+              preparerId: "repository",
+              workingDirectory,
+              references: [],
+              result: { resources: [{ root: join(workingDirectory, "escaped") }] },
+            },
           },
         ),
       ).rejects.toMatchObject({ code: "SOURCE_RESOLUTION_ERROR" });

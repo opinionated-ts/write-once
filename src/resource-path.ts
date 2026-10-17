@@ -100,7 +100,7 @@ export async function normalizeResolvedResource(
     );
   }
 
-  const assignedPreparation = context.preparations?.[0];
+  const assignedPreparation = context.preparation;
   if (assignedPreparation !== undefined) {
     const preparedRoots = new Set(
       assignedPreparation.result.resources.map((resource) => resolve(context.cwd, resource.root)),
@@ -127,22 +127,18 @@ export async function normalizeResolvedResource(
       );
     }
 
-    // Keep associated temporary-root checks deterministic.
-    // oxlint-disable no-await-in-loop
-    for (const preparation of context.preparations ?? []) {
-      if (!isWithin(preparation.workingDirectory, root)) continue;
-      const realWorkingDirectory = await realpath(preparation.workingDirectory);
+    // Keep the assigned temporary-root check deterministic.
+    if (assignedPreparation !== undefined && isWithin(assignedPreparation.workingDirectory, root)) {
+      const realWorkingDirectory = await realpath(assignedPreparation.workingDirectory);
       if (!isWithin(realWorkingDirectory, realRoot)) {
         return fail(
           source,
           resolverId,
           context,
-          `Resolved root escapes preparer "${preparation.preparerId}" temporary directory.`,
+          `Resolved root escapes preparer "${assignedPreparation.preparerId}" temporary directory.`,
         );
       }
     }
-
-    // oxlint-enable no-await-in-loop
 
     const realCandidate = await realpath(candidate);
     if (!isWithin(realRoot, realCandidate)) {

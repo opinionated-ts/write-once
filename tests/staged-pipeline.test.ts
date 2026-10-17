@@ -81,11 +81,11 @@ export default {
       id: "prepared",
       canResolve: (source, context) =>
         (source.startsWith("alpha:") || source.startsWith("beta:")) &&
-        context.preparations?.length === 1 &&
-        context.preparations[0]?.references.some((reference) => reference.source === source) === true,
+        context.preparation !== undefined &&
+        context.preparation?.references.some((reference) => reference.source === source) === true,
       async resolve(source, context) {
         await record(context.cwd, "resolve:" + source);
-        const resource = context.preparations?.flatMap((batch) => batch.result.resources).find(
+        const resource = context.preparation?.result.resources.find(
           (item) => item.metadata?.source === source,
         );
         if (resource === undefined) throw new Error("Prepared resource mapping missing.");
@@ -121,8 +121,8 @@ import { join } from "node:path";
 
 const matchesPreparedReference = (source, context) =>
   source.startsWith("alpha:") &&
-  context.preparations?.length === 1 &&
-  context.preparations[0]?.references.some((reference) => reference.source === source) === true;
+  context.preparation !== undefined &&
+  context.preparation?.references.some((reference) => reference.source === source) === true;
 
 export default {
   include: ["README.md"],
@@ -136,8 +136,8 @@ export default {
     },
   }],
   resolvers: [
-    { id: "first", canResolve: matchesPreparedReference, resolve: (_source, context) => ({ root: context.preparations[0].workingDirectory, path: "first.md" }) },
-    { id: "second", canResolve: matchesPreparedReference, resolve: (_source, context) => ({ root: context.preparations[0].workingDirectory, path: "second.md" }) },
+    { id: "first", canResolve: matchesPreparedReference, resolve: (_source, context) => ({ root: context.preparation!.workingDirectory, path: "first.md" }) },
+    { id: "second", canResolve: matchesPreparedReference, resolve: (_source, context) => ({ root: context.preparation!.workingDirectory, path: "second.md" }) },
   ],
 };
 `,
@@ -166,7 +166,7 @@ export default {
   }],
   resolvers: [{
     id: "unmatched",
-    canResolve: (_source, context) => context.preparations?.length === 0,
+    canResolve: (_source, context) => context.preparation === undefined,
     resolve: () => { throw new Error("should not resolve"); },
   }],
 };
