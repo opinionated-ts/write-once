@@ -100,6 +100,21 @@ export async function normalizeResolvedResource(
     );
   }
 
+  const assignedPreparation = context.preparations?.[0];
+  if (assignedPreparation !== undefined) {
+    const preparedRoots = new Set(
+      assignedPreparation.result.resources.map((resource) => resolve(context.cwd, resource.root)),
+    );
+    if (!preparedRoots.has(root)) {
+      return fail(
+        source,
+        resolverId,
+        context,
+        `Resolver "${resolverId}" returned root "${value["root"]}" that was not declared by the assigned preparation for source "${source}". Return one of that preparation's resource roots.`,
+      );
+    }
+  }
+
   try {
     const realRoot = await realpath(root);
     const rootStats = await stat(realRoot);

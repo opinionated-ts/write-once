@@ -142,6 +142,54 @@ export default {
     expect(await readFile(destination, "utf8")).toBe(original);
   });
 
+  it("rejects resolver roots not declared by the assigned preparation", async () => {
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    const original = 'fragment source="repo:unrelated"\nold\n/fragment';
+    await writeFile(destination, original, "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+export default {
+  include: ["README.md"],
+  preparers: [{
+    id: "repo",
+    canPrepare: () => true,
+    async prepare(_references, context) {
+      await mkdir(join(context.workingDirectory, "declared"));
+      await mkdir(join(context.workingDirectory, "unrelated"));
+      await writeFile(join(context.workingDirectory, "declared", "source.md"), "prepared");
+      await writeFile(join(context.workingDirectory, "unrelated", "source.md"), "unrelated");
+      return { resources: [{ root: join(context.workingDirectory, "declared") }] };
+    },
+  }],
+  resolvers: [{
+    id: "repo",
+    canResolve: (source) => source.startsWith("repo:"),
+    resolve: (_source, context) => ({
+      root: join(context.preparations[0].workingDirectory, "unrelated"),
+      path: "source.md",
+    }),
+  }],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.diagnostics[0]).toMatchObject({
+      stage: "resolve",
+      source: "repo:unrelated",
+      message: expect.stringContaining("not declared by the assigned preparation"),
+    });
+    expect(result.diagnostics[0]?.message).toContain("unrelated");
+    expect(await readFile(destination, "utf8")).toBe(original);
+  });
+
   it.each(["resource", "batch"])("rejects non-object %s metadata", async (scope) => {
     const cwd = await createProject();
     const destination = join(cwd, "README.md");

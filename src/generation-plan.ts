@@ -255,6 +255,7 @@ export async function resolveSourceReferences(
         value: { resolver, resource: normalized, context } satisfies ResolvedReference,
       };
     } catch (cause) {
+      const reason = cause instanceof Error ? ` ${cause.message}` : "";
       return {
         key: referenceKey(reference),
         diagnostic: diagnosticError(
@@ -263,7 +264,8 @@ export async function resolveSourceReferences(
             (resolver?.id ?? "selection") +
             '" could not resolve source "' +
             source +
-            '".',
+            '".' +
+            reason,
           destination,
           marker,
           cause,

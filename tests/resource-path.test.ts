@@ -61,6 +61,66 @@ describe("normalizeResolvedResource", () => {
     });
   });
 
+  it("accepts a root whose normalized path matches a prepared resource root", async () => {
+    const workingDirectory = await createDirectory("write-once-prepared-");
+    const preparedRoot = join(workingDirectory, "declared");
+    await mkdir(preparedRoot);
+    await writeFile(join(preparedRoot, "source.md"), "prepared", "utf8");
+    const context: ResourceContext = {
+      cwd: workingDirectory,
+      preparations: [
+        {
+          preparerId: "repository",
+          workingDirectory,
+          references: [],
+          result: { resources: [{ root: preparedRoot }] },
+        },
+      ],
+    };
+
+    const result = await normalizeResolvedResource(
+      { root: `${workingDirectory}/declared/../declared`, path: "source.md" },
+      "repo:source.md",
+      "repository",
+      context,
+    );
+
+    expect(result.root).toBe(preparedRoot);
+  });
+
+  it("rejects a root not declared by the assigned preparation", async () => {
+    const workingDirectory = await createDirectory("write-once-prepared-");
+    const preparedRoot = join(workingDirectory, "declared");
+    const unrelatedRoot = join(workingDirectory, "unrelated");
+    await mkdir(preparedRoot);
+    await mkdir(unrelatedRoot);
+    await writeFile(join(preparedRoot, "source.md"), "prepared", "utf8");
+    await writeFile(join(unrelatedRoot, "source.md"), "unrelated", "utf8");
+    const context: ResourceContext = {
+      cwd: workingDirectory,
+      preparations: [
+        {
+          preparerId: "repository",
+          workingDirectory,
+          references: [],
+          result: { resources: [{ root: preparedRoot }] },
+        },
+      ],
+    };
+
+    await expect(
+      normalizeResolvedResource(
+        { root: unrelatedRoot, path: "source.md" },
+        "repo:source.md",
+        "repository",
+        context,
+      ),
+    ).rejects.toMatchObject({
+      code: "SOURCE_RESOLUTION_ERROR",
+      message: expect.stringContaining('root "' + unrelatedRoot + '" that was not declared'),
+    });
+  });
+
   it("rejects a file used as the declared resource root", async () => {
     const cwd = await createDirectory("write-once-path-");
     const fileRoot = join(cwd, "not-a-directory");
@@ -138,7 +198,7 @@ describe("normalizeResolvedResource", () => {
                 preparerId: "repository",
                 workingDirectory,
                 references: [],
-                result: { resources: [] },
+                result: { resources: [{ root: join(workingDirectory, "escaped") }] },
               },
             ],
           },
