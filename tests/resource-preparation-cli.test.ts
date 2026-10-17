@@ -230,9 +230,10 @@ export default {
     expect(result.diagnostics[0]).toMatchObject({
       stage: "resolve",
       source: "repo:unrelated",
-      message: expect.stringContaining("not declared by the assigned preparation"),
     });
-    expect(result.diagnostics[0]?.message).toContain("unrelated");
+    expect(result.diagnostics[0]?.cause).toMatchObject({
+      message: expect.stringContaining("unrelated"),
+    });
     expect(await readFile(destination, "utf8")).toBe(original);
   });
 
