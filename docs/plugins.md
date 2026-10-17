@@ -7,7 +7,7 @@ The project does not currently load, install, or discover third-party plugins au
 ## How the pipeline uses extensions
 
 1. **Prepare resources.** For each source reference, the first preparer whose `canPrepare(reference, context)` returns `true` is selected. Write Once groups references by that preparer and calls `prepare` once for its batch.
-2. **Resolve the reference.** Resolvers are checked in registration order. Their `canResolve(source, context)` receives the reference's applicable context: if a preparer was selected, the context contains only that preparer's batch. A resolver can infer its association from the source and prepared context; no shared function identity, provider ID mapping, or separate registry is required. If no preparer claims the source, resolver-only handling remains possible with an empty `preparation`. The first compatible resolver wins; if none matches, generation reports a resolution diagnostic.
+2. **Resolve the reference.** Resolvers are checked in registration order. Their `canResolve(source, context)` receives the reference's applicable context: if a preparer was selected, the context contains only that preparer's batch. A resolver can infer its association from the source and prepared context; no shared function identity, provider ID mapping, or separate registry is required. If no preparer claims the source, resolver-only handling remains possible with no assigned `preparation`. The first compatible resolver wins; if none matches, generation reports a resolution diagnostic.
 3. **Load and extract content.** The core validates the resolver's root and relative path, loads source text, and selects the first compatible extractor. Configured extractors are checked before the built-in named-fragment, range, and whole-file extractors. Only one extractor handles a reference. If the selected extractor fails, generation reports the extraction failure; Write Once does not silently try another extractor.
 4. **Customize output.** Every registered `pre-write` hook runs for a generated block in registration order. Each hook receives the current `text` and `fullText` state produced by the previous hook. Without a matching hook, the extracted text is used as-is.
 5. **Write destinations.** The pipeline plans and validates destination output before writing. A failure during preparation, resolution, extraction, or a hook prevents destination writes for that generation plan. Writes are atomic per file, not across the entire project.
@@ -35,7 +35,7 @@ Every resource root must stay inside the preparer's working directory. If a prep
 - When `context.preparation` contains an assigned batch, the returned root must match one of that batch's declared resource roots after path normalization. The core rejects undeclared roots and paths that escape their root.
 - Resolver metadata describes the resolved resource; it is separate from preparation metadata.
 
-Use `context.preparation` to read the assigned batch's `references`, `result.resources`, resource metadata, or batch metadata. Do not search unrelated preparations or assume a resource has its own `references` list.
+Use `context.preparation` to read the assigned batch's `references`, `result.resources`, resource metadata, or batch metadata. The context never exposes unrelated preparation batches, and resources do not carry the batch's reference list.
 
 ### `ContentExtractor`
 
@@ -64,7 +64,7 @@ Create `plugins/example.ts`:
 
 ```ts
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import type { PluginContribution } from "write-once";
 
@@ -80,7 +80,7 @@ export const examplePlugin: PluginContribution = {
 
         for (const reference of references) {
           const path = reference.source.slice("example:".length) + ".md";
-          await mkdir(join(root, path, ".."), { recursive: true });
+          await mkdir(dirname(join(root, path)), { recursive: true });
           await writeFile(
             join(root, path),
             `Example content for ${reference.source}\n`,
