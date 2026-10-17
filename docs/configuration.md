@@ -4,7 +4,7 @@ You can use write-once without a configuration file. By default, it processes fi
 
 ## File discovery
 
-c12 supports these config extensions: `.js`, `.ts`, `.mjs`, `.cjs`, `.mts`, `.cts`, `.json`, `.jsonc`, `.json5`, `.yaml`, `.yml`, and `.toml`. Use a filename such as `write-once.config.ts` in the project root or `.config/` directory.
+Configuration files can use `.js`, `.ts`, `.mjs`, `.cjs`, `.mts`, `.cts`, `.json`, `.jsonc`, `.json5`, `.yaml`, `.yml`, or `.toml` extensions. Place a file such as `write-once.config.ts` in the project root or `.config/` directory.
 
 Automatic discovery fails if more than one supported `write-once.config.*` file is found. Select one explicitly with `write-once generate --config <path>`; config files are never silently merged. The path is resolved relative to the CLI working directory.
 

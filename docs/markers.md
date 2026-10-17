@@ -43,6 +43,7 @@ Ignore the next fragment block:
 <!-- fragment range="not-a-valid-range" -->
 This intentionally invalid example is left untouched.
 <!-- /fragment -->
+
 <!-- fragment source="./content.md" -->
 This fragment is still processed normally.
 <!-- /fragment -->
@@ -56,6 +57,7 @@ Ignore all fragments within a region:
 // write-once-ignore-start
 fragment range="not-a-valid-range"
 /fragment
+
 <!-- fragment source="./missing.md" -->
 <!-- /fragment -->
 <!-- write-once-ignore-end -->

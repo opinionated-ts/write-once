@@ -53,7 +53,7 @@ Then run:
 
 ```sh
 bunx write-once generate
-#npx write-once generate
+# npx write-once generate
 ```
 
 The destination now contains the source text. Run the command again whenever you want to synchronize your files. Unchanged files are not rewritten.
