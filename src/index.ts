@@ -21,6 +21,7 @@ export type {
   MarkerToken,
   NamedFragmentSelector,
   PluginContribution,
+  PluginFactory,
   PreparedResource,
   PreparedResourceBatch,
   RangeSelector,

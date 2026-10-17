@@ -5,6 +5,8 @@ import { resolve } from "node:path";
 import type {
   ContentExtractor,
   GenerationHook,
+  PluginContribution,
+  PluginFactory,
   ResourcePreparer,
   ResourceResolver,
 } from "./types.js";
@@ -27,6 +29,8 @@ export interface UserConfig {
   resolvers?: readonly ResourceResolver[];
   extractors?: readonly ContentExtractor[];
   hooks?: readonly GenerationHook[];
+  /** Plugin factories whose optional capabilities are composed during validation. */
+  plugins?: readonly PluginFactory[];
 }
 
 /** Backwards-compatible name for {@link UserConfig}. */
@@ -121,6 +125,14 @@ function hasDuplicateIds(items: Array<{ id: string }>): boolean {
   return new Set(items.map((item) => item.id)).size !== items.length;
 }
 
+function isPluginContribution(value: unknown): value is PluginContribution {
+  if (!isRecord(value)) return false;
+  if (value["name"] !== undefined && typeof value["name"] !== "string") return false;
+  return (["preparers", "resolvers", "extractors", "hooks"] as const).every(
+    (key) => value[key] === undefined || Array.isArray(value[key]),
+  );
+}
+
 /** Validate untrusted configuration input and resolve its project root. */
 export function validateConfig(
   value: unknown,
@@ -176,7 +188,45 @@ export function validateConfig(
   const includePatterns = include ?? ["**/*"];
   const excludePatterns = exclude ?? DEFAULT_EXCLUDE_PATTERNS;
 
-  const preparers = value["preparers"] ?? [];
+  const pluginFactories = value["plugins"] === undefined ? [] : value["plugins"];
+  if (
+    !Array.isArray(pluginFactories) ||
+    !pluginFactories.every((plugin) => typeof plugin === "function")
+  ) {
+    return invalid('"plugins" must be an array of plugin factory functions.', "plugins");
+  }
+
+  const contributions: PluginContribution[] = [];
+  for (const factory of pluginFactories as readonly PluginFactory[]) {
+    let contribution: unknown;
+    try {
+      contribution = factory();
+    } catch (cause) {
+      const reason = cause instanceof Error ? cause.message : String(cause);
+      return invalid(`A plugin factory failed: ${reason}`, "plugins");
+    }
+    if (!isPluginContribution(contribution)) {
+      return invalid(
+        "Each plugin factory must return an object with optional capability arrays.",
+        "plugins",
+      );
+    }
+    contributions.push(contribution);
+  }
+
+  // Explicit capabilities take precedence by registration order; plugin capabilities follow in plugin order.
+  const pluginValues = (key: "preparers" | "resolvers" | "extractors" | "hooks"): unknown[] =>
+    contributions.reduce<unknown[]>((values, contribution) => {
+      const items = contribution[key];
+      if (items !== undefined) values.push(...items);
+      return values;
+    }, []);
+  const configuredValues = (key: "preparers" | "resolvers" | "extractors" | "hooks"): unknown[] => {
+    const direct = value[key];
+    return direct === undefined ? [] : Array.isArray(direct) ? direct : [direct];
+  };
+
+  const preparers = [...configuredValues("preparers"), ...pluginValues("preparers")];
   if (!Array.isArray(preparers) || !preparers.every(isPreparer)) {
     return invalid(
       '"preparers" must contain preparer objects with id, canPrepare, and prepare.',
@@ -184,7 +234,7 @@ export function validateConfig(
     );
   }
 
-  const resolvers = value["resolvers"] ?? [];
+  const resolvers = [...configuredValues("resolvers"), ...pluginValues("resolvers")];
   if (!Array.isArray(resolvers) || !resolvers.every(isResolver)) {
     return invalid(
       '"resolvers" must contain resolver objects with id, canResolve, and resolve.',
@@ -192,7 +242,7 @@ export function validateConfig(
     );
   }
 
-  const extractors = value["extractors"] ?? [];
+  const extractors = [...configuredValues("extractors"), ...pluginValues("extractors")];
   if (!Array.isArray(extractors) || !extractors.every(isExtractor)) {
     return invalid(
       '"extractors" must contain extractor objects with id, canExtract, and extract.',
@@ -200,7 +250,7 @@ export function validateConfig(
     );
   }
 
-  const hooks = value["hooks"] ?? [];
+  const hooks = [...configuredValues("hooks"), ...pluginValues("hooks")];
   if (!Array.isArray(hooks) || !hooks.every(isHook)) {
     return invalid('"hooks" must contain hook objects with id, stage, and run.', "hooks");
   }

@@ -129,6 +129,10 @@ export interface PluginContribution<
   hooks?: readonly Hook[];
 }
 
+/** A factory evaluated once while normalizing a configuration. */
+export type PluginFactory<Contribution extends PluginContribution = PluginContribution> =
+  () => Contribution;
+
 /** A source reference and the destination context in which it was declared. */
 export interface SourceReferenceContext {
   source: string;

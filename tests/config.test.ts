@@ -61,6 +61,68 @@ describe("validateConfig", () => {
     }
   });
 
+  it("composes plugin factories once, after direct capabilities, preserving plugin order", () => {
+    const calls: string[] = [];
+    const firstPlugin = () => {
+      calls.push("hook-only");
+      return { hooks: [{ ...hook, id: "plugin-hook" }] };
+    };
+    const secondPlugin = () => {
+      calls.push("extractor-only");
+      return { extractors: [{ ...extractor, id: "plugin-extractor" }] };
+    };
+    const thirdPlugin = () => {
+      calls.push("provider");
+      return { preparers: [preparer], resolvers: [resolver] };
+    };
+    const fourthPlugin = () => {
+      calls.push("mixed");
+      return {
+        extractors: [{ ...extractor, id: "mixed-extractor" }],
+        hooks: [{ ...hook, id: "mixed-hook" }],
+      };
+    };
+    const result = validateConfig(
+      { hooks: [hook], plugins: [firstPlugin, secondPlugin, thirdPlugin, fourthPlugin] },
+      "/repo",
+    );
+
+    expect(isSuccess(result)).toBe(true);
+    expect(calls).toEqual(["hook-only", "extractor-only", "provider", "mixed"]);
+    if (isSuccess(result)) {
+      expect(result.value.hooks.map((item) => item.id)).toEqual([
+        "format",
+        "plugin-hook",
+        "mixed-hook",
+      ]);
+      expect(result.value.extractors.map((item) => item.id)).toEqual([
+        "plugin-extractor",
+        "mixed-extractor",
+      ]);
+      expect(result.value.preparers).toEqual([preparer]);
+      expect(result.value.resolvers).toEqual([resolver]);
+    }
+  });
+
+  it.each([
+    ["not-an-array", '"plugins" must be an array of plugin factory functions.'],
+    [[{}], '"plugins" must be an array of plugin factory functions.'],
+    [[() => null], "Each plugin factory must return an object with optional capability arrays."],
+    [
+      [
+        () => {
+          throw new Error("factory failed");
+        },
+      ],
+      "A plugin factory failed: factory failed",
+    ],
+  ])("rejects invalid plugin factories", (plugins, message) => {
+    const result = validateConfig({ plugins }, "/repo");
+
+    expect(isFailure(result)).toBe(true);
+    if (isFailure(result)) expect(result.error.message).toContain(message);
+  });
+
   it("accepts independent preparer, resolver, extractor, and hook contributions", () => {
     const result = validateConfig(
       { preparers: [preparer], resolvers: [resolver], extractors: [extractor], hooks: [hook] },

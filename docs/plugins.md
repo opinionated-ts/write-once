@@ -1,6 +1,6 @@
 # Plugin development
 
-Write Once exposes TypeScript extension points for adapting source providers, selecting content, and customizing generated blocks. An extension can be a small object in a config file or a reusable module that exports a `PluginContribution`.
+Write Once exposes TypeScript extension points for adapting source providers, selecting content, and customizing generated blocks. An extension can be a reusable module that exports a plugin factory returning a `PluginContribution`. Register the factory once through `plugins`; Write Once evaluates each factory once while validating the config and composes its optional capabilities.
 
 The project does not currently load, install, or discover third-party plugins automatically. Register their capabilities through `preparers`, `resolvers`, `extractors`, and `hooks` in an executable TypeScript or JavaScript config.
 
@@ -12,7 +12,7 @@ The project does not currently load, install, or discover third-party plugins au
 4. **Customize output.** Every registered `pre-write` hook runs for a generated block in registration order. Each hook receives the current `text` and `fullText` state produced by the previous hook. Without a matching hook, the extracted text is used as-is.
 5. **Write destinations.** The pipeline plans and validates destination output before writing. A failure during preparation, resolution, extraction, or a hook prevents destination writes for that generation plan. Writes are atomic per file, not across the entire project.
 
-Registration order is the conflict-resolution rule for matching capabilities. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
+Direct capability arrays are registered first, followed by plugin contributions in `plugins` array order. Within each capability, registration order is the conflict-resolution rule. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
 
 ## Preparation contracts
 
@@ -68,7 +68,7 @@ import { dirname, join } from "node:path";
 
 import type { PluginContribution } from "write-once";
 
-export const examplePlugin: PluginContribution = {
+export const examplePlugin = (): PluginContribution => ({
   name: "example-provider",
   preparers: [
     {
@@ -118,10 +118,10 @@ export const examplePlugin: PluginContribution = {
       },
     },
   ],
-};
+});
 ```
 
-Register its capabilities in `write-once.config.ts`:
+Register the plugin once in `write-once.config.ts`:
 
 ```ts
 import { defineConfig } from "write-once";
@@ -130,10 +130,7 @@ import { examplePlugin } from "./plugins/example.js";
 
 export default defineConfig({
   include: ["**/*.md"],
-  preparers: [...(examplePlugin.preparers ?? [])],
-  resolvers: [...(examplePlugin.resolvers ?? [])],
-  extractors: [...(examplePlugin.extractors ?? [])],
-  hooks: [...(examplePlugin.hooks ?? [])],
+  plugins: [examplePlugin],
 });
 ```
 

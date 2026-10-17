@@ -4,6 +4,7 @@ import type {
   GenerationHook,
   HookOutput,
   PluginContribution,
+  PluginFactory,
   ResourcePreparer,
   ResourceResolver,
   ResolvedContent,
@@ -11,6 +12,10 @@ import type {
   SourceSelector,
   TextSpan,
 } from "@/index";
+
+const providerFactory: PluginFactory = () => ({ preparers: [], resolvers: [] });
+const extractorFactory: PluginFactory = () => ({ extractors: [] });
+const mixedFactory: PluginFactory = () => ({ extractors: [], hooks: [] });
 
 describe("public types", () => {
   it("models source selection as a discriminated union", () => {
@@ -83,6 +88,8 @@ describe("public types", () => {
     expect(hookOnlyPlugin.hooks).toEqual([markdownHook]);
     expect(hookOnlyPlugin.resolvers).toBeUndefined();
     expect(hookOnlyPlugin.extractors).toBeUndefined();
+
+    expect([providerFactory(), extractorFactory(), mixedFactory()]).toHaveLength(3);
   });
 
   it("distinguishes body-only and full-block hook output", () => {
