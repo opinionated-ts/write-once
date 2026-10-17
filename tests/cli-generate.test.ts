@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -79,6 +79,41 @@ describe("runGenerate", () => {
     const output = await readFile(destination, "utf8");
     expect(output).toContain("first source content larger than budget");
     expect(output).toContain("second source content larger than budget");
+  });
+
+  it("cleans spilled source content when generation fails after loading sources", async () => {
+    const before = new Set(await readdir(tmpdir()));
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    await writeFile(join(cwd, "one.md"), "first source\nsecond line", "utf8");
+    await writeFile(join(cwd, "two.md"), "another source\nanother line", "utf8");
+    await writeFile(
+      destination,
+      [
+        'fragment source="./one.md"',
+        "old one",
+        "/fragment",
+        'fragment source="./two.md" range="99:1-100:1"',
+        "old two",
+        "/fragment",
+      ].join("\n"),
+      "utf8",
+    );
+    await writeFile(
+      join(cwd, "write-once.config.json"),
+      JSON.stringify({ include: ["README.md"], memoryBudgetMiB: 0.00001, maxConcurrency: 1 }),
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.written).toEqual([]);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.severity === "error")).toBe(true);
+    const leftovers = (await readdir(tmpdir())).filter(
+      (name) => name.startsWith("write-once-content-") && !before.has(name),
+    );
+    expect(leftovers).toEqual([]);
   });
 
   it("uses an explicit config path and reports config failures", async () => {
