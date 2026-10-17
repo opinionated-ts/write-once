@@ -112,8 +112,8 @@ export default {
     const cwd = await createProject();
     const first = join(cwd, "README.md");
     const second = join(cwd, "GUIDE.md");
-    await writeFile(first, 'fragment source="example:first"\nold\n/fragment', "utf8");
-    await writeFile(second, 'fragment source="example:second"\nold\n/fragment', "utf8");
+    await writeFile(first, 'fragment source="example:first.md"\nold\n/fragment', "utf8");
+    await writeFile(second, 'fragment source="example:second.md"\nold\n/fragment', "utf8");
     await writeFile(
       join(cwd, "write-once.config.ts"),
       `import { mkdir, writeFile } from "node:fs/promises";
@@ -129,7 +129,7 @@ export default {
       await mkdir(root, { recursive: true });
       for (const reference of references) {
         const name = reference.source.slice("example:".length);
-        await writeFile(join(root, name + ".md"), name, "utf8");
+        await writeFile(join(root, name), name, "utf8");
       }
       return { resources: [{ root }] };
     },
@@ -139,7 +139,7 @@ export default {
     canResolve: (source, context) => source.startsWith("example:") && context.preparation !== undefined,
     resolve: (source, context) => ({
       root: context.preparation!.result.resources[0]!.root,
-      path: source.slice("example:".length) + ".md",
+      path: source.slice("example:".length),
     }),
   }],
 };
