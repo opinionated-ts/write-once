@@ -54,7 +54,7 @@ A hook should be deterministic and should not write destination files itself. On
 
 ## Example provider plugin
 
-This example demonstrates the contracts with a synthetic `example:` provider. It writes sample content into the temporary directory; it is not a built-in or remote provider integration.
+This example demonstrates the contracts with a synthetic `example:` provider. It prepares one shared directory tree for all assigned references; it is not a built-in or remote provider integration.
 
 Create `plugins/example.ts`:
 
@@ -71,26 +71,22 @@ export const examplePlugin: PluginContribution = {
       id: "example-provider",
       canPrepare: (reference) => reference.source.startsWith("example:"),
       async prepare(references, context) {
-        const resources: PreparedResource[] = [];
-        const sources = [...new Set(references.map((reference) => reference.source))];
+        const root = context.workingDirectory;
+        await mkdir(root, { recursive: true });
 
-        for (const source of sources) {
-          const root = join(context.workingDirectory, String(resources.length));
-          await mkdir(root, { recursive: true });
+        for (const reference of references) {
+          const path = reference.source.slice("example:".length) + ".md";
+          await mkdir(join(root, path, ".."), { recursive: true });
           await writeFile(
-            join(root, "content.md"),
-            `Example content for ${source}\n`,
+            join(root, path),
+            `Example content for ${reference.source}\n`,
             "utf8",
           );
-          resources.push({
-            root,
-            metadata: { source, path: "content.md" },
-          });
         }
 
         return {
-          resources,
-          metadata: { provider: "example", sourceCount: sources.length },
+          resources: [{ root }],
+          metadata: { provider: "example", sourceCount: references.length },
         };
       },
     },
@@ -99,26 +95,22 @@ export const examplePlugin: PluginContribution = {
     {
       id: "example-provider",
       canResolve(source, context) {
-        const [preparation] = context.preparations ?? [];
         return (
           source.startsWith("example:") &&
-          preparation?.references.some((reference) => reference.source === source) === true
+          context.preparations?.[0]?.references.some(
+            (reference) => reference.source === source,
+          ) === true
         );
       },
       resolve(source, context) {
-        const [preparation] = context.preparations ?? [];
-        const resource = preparation?.result.resources.find(
-          (candidate) => candidate.metadata?.source === source,
-        );
-        const path = resource?.metadata?.path;
-
-        if (preparation === undefined || resource === undefined || typeof path !== "string") {
-          throw new Error(`No prepared resource was returned for "${source}".`);
+        const preparation = context.preparations?.[0];
+        if (preparation === undefined) {
+          throw new Error(`No preparation was assigned to "${source}".`);
         }
 
         return {
-          root: resource.root,
-          path,
+          root: preparation.result.resources[0]!.root,
+          path: source.slice("example:".length) + ".md",
           metadata: { provider: preparation.result.metadata?.provider },
         };
       },
@@ -143,7 +135,7 @@ export default defineConfig({
 });
 ```
 
-A destination can now use a reference such as `example:intro`. The example resolver uses the source reference and the assigned preparation batch to find the matching resource; it does not compare function identities or use a manually configured preparer-to-resolver mapping.
+A destination can now use references such as `example:intro` and `example:setup`. The preparer creates one shared directory tree containing both files and returns that directory as a single `PreparedResource.root`. The resolver maps each reference to a path within that shared root; it does not create or require one root per file.
 
 ## Composing extractors and hooks
 

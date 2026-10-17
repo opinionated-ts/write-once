@@ -108,6 +108,52 @@ export default {
     expect(await readFile(second, "utf8")).toContain("prepared content");
   });
 
+  it("allows one prepared root to satisfy multiple references", async () => {
+    const cwd = await createProject();
+    const first = join(cwd, "README.md");
+    const second = join(cwd, "GUIDE.md");
+    await writeFile(first, 'fragment source="example:first"\nold\n/fragment', "utf8");
+    await writeFile(second, 'fragment source="example:second"\nold\n/fragment', "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+export default {
+  include: ["README.md", "GUIDE.md"],
+  preparers: [{
+    id: "example",
+    canPrepare: (reference) => reference.source.startsWith("example:"),
+    async prepare(references, context) {
+      const root = context.workingDirectory;
+      await mkdir(root, { recursive: true });
+      for (const reference of references) {
+        const name = reference.source.slice("example:".length);
+        await writeFile(join(root, name + ".md"), name, "utf8");
+      }
+      return { resources: [{ root }] };
+    },
+  }],
+  resolvers: [{
+    id: "example",
+    canResolve: (source, context) => source.startsWith("example:") && context.preparations?.[0] !== undefined,
+    resolve: (source, context) => ({
+      root: context.preparations![0]!.result.resources[0]!.root,
+      path: source.slice("example:".length) + ".md",
+    }),
+  }],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(0);
+    expect(await readFile(first, "utf8")).toContain("first");
+    expect(await readFile(second, "utf8")).toContain("second");
+  });
+
   it("rejects prepared resources whose roots escape the assigned working directory", async () => {
     const cwd = await createProject();
     const destination = join(cwd, "README.md");
