@@ -60,6 +60,8 @@ A hook should be deterministic and should not write destination files itself. Ho
 
 This example demonstrates the contracts with a synthetic `example:` provider. It prepares one shared directory tree for all assigned references; it is not a built-in or remote provider integration.
 
+The source reference is the input to a deterministic mapping: `example:docs/guide.md` maps to `docs/guide.md` inside the prepared root. Both preparation and resolution use the same mapping function. Neither stage invents a file extension or changes the reference's path.
+
 Create `plugins/example.ts`:
 
 ```ts
@@ -67,6 +69,21 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { PluginContribution } from "write-once";
+
+function getResourcePath(source: string): string {
+  const path = source.slice("example:".length);
+  const segments = path.split("/");
+
+  if (
+    !path ||
+    path.includes("\") ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    throw new Error(`Invalid example source reference: "${source}".`);
+  }
+
+  return path;
+}
 
 export const examplePlugin = (): PluginContribution => ({
   name: "example-provider",
@@ -78,8 +95,11 @@ export const examplePlugin = (): PluginContribution => ({
         const root = context.workingDirectory;
         await mkdir(root, { recursive: true });
 
+        // A real provider could clone a repository, fetch from cloud storage,
+        // or otherwise materialize the resources requested by these references.
+        // This example writes one placeholder file per reference using its exact path.
         for (const reference of references) {
-          const path = reference.source.slice("example:".length) + ".md";
+          const path = getResourcePath(reference.source);
           await mkdir(dirname(join(root, path)), { recursive: true });
           await writeFile(
             join(root, path),
@@ -112,7 +132,7 @@ export const examplePlugin = (): PluginContribution => ({
 
         return {
           root: preparation.result.resources[0]!.root,
-          path: source.slice("example:".length) + ".md",
+          path: getResourcePath(source),
           metadata: { provider: preparation.result.metadata?.provider },
         };
       },
@@ -134,7 +154,9 @@ export default defineConfig({
 });
 ```
 
-A destination can now use references such as `example:intro` and `example:setup`. The preparer creates one shared directory tree containing both files and returns that directory as a single `PreparedResource.root`. The resolver maps each reference to a path within that shared root; it does not create or require one root per file.
+A destination can now use references such as `example:intro.md` and `example:docs/setup.md`. The source carries the extension and relative path, so the consumer does not have to repeat `.md` in preparer or resolver code. The preparer creates one shared directory tree containing a file at each mapped path and returns that directory as a single `PreparedResource.root`. The resolver applies the same mapping to find the requested file; it does not create or require one root per file.
+
+This is a deliberately simple materialization example. A remote provider can use the same deterministic mapping while cloning a repository, fetching objects from a cloud service, or preparing a filesystem-like view of remote content. The preparer returns only the roots and optional metadata needed for resolution; the original references remain pipeline bookkeeping.
 
 ## Composing extractors and hooks
 

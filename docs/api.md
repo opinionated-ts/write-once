@@ -16,7 +16,7 @@ See the [configuration guide](configuration.md) for defaults and examples, or th
 Extensions are registered through the `preparers`, `resolvers`, `extractors`, and `hooks` configuration options. A plugin can provide any combination of these through `PluginContribution`.
 
 - **Preparers** select source references that need provider-specific setup and prepare resources before resolution.
-- **Resolvers** map a source reference to a resource root and relative path. They return locations, not file contents.
+- **Resolvers** map the original source reference to a resource root and relative path. The source should carry its own path/format information; preparers and resolvers must use the same deterministic mapping instead of independently appending extensions. They return locations, not file contents.
 - **Extractors** select the content to reuse from a resolved resource, such as a whole file, named fragment, or range.
 - **Hooks** customize generated content before it is written. All `pre-write` hooks run in registration order, each receiving the current `text` and `fullText`. A hook may return either representation or both; Write Once derives `text` when a hook replaces only `fullText`.
 
