@@ -79,7 +79,10 @@ export default {
   resolvers: [
     {
       id: "prepared",
-      canResolve: (source) => source.startsWith("alpha:") || source.startsWith("beta:"),
+      canResolve: (source, context) =>
+        (source.startsWith("alpha:") || source.startsWith("beta:")) &&
+        context.preparations?.length === 1 &&
+        context.preparations[0]?.references.some((reference) => reference.source === source) === true,
       async resolve(source, context) {
         await record(context.cwd, "resolve:" + source);
         const resource = context.preparations?.flatMap((batch) => batch.result.resources).find(
@@ -105,6 +108,81 @@ export default {
     expect(firstResolution).toBeGreaterThan(lastPreparation);
     expect(await readFile(destination, "utf8")).toContain("alpha content");
     expect(await readFile(destination, "utf8")).toContain("beta content");
+  });
+
+  it("uses registration order when multiple resolvers match the same prepared reference", async () => {
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    await writeFile(destination, 'fragment source="alpha:source"\nold\n/fragment', "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+const matchesPreparedReference = (source, context) =>
+  source.startsWith("alpha:") &&
+  context.preparations?.length === 1 &&
+  context.preparations[0]?.references.some((reference) => reference.source === source) === true;
+
+export default {
+  include: ["README.md"],
+  preparers: [{
+    id: "alpha",
+    canPrepare: (reference) => reference.source.startsWith("alpha:"),
+    async prepare(references, context) {
+      await writeFile(join(context.workingDirectory, "first.md"), "first resolver");
+      await writeFile(join(context.workingDirectory, "second.md"), "second resolver");
+      return { resources: [{ root: context.workingDirectory, metadata: { source: references[0]?.source } }] };
+    },
+  }],
+  resolvers: [
+    { id: "first", canResolve: matchesPreparedReference, resolve: (_source, context) => ({ root: context.preparations[0].workingDirectory, path: "first.md" }) },
+    { id: "second", canResolve: matchesPreparedReference, resolve: (_source, context) => ({ root: context.preparations[0].workingDirectory, path: "second.md" }) },
+  ],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(0);
+    expect(await readFile(destination, "utf8")).toContain("first resolver");
+  });
+
+  it("reports an unsupported prepared reference when no resolver matches its context", async () => {
+    const cwd = await createProject();
+    const destination = join(cwd, "README.md");
+    const original = 'fragment source="https://example.com/source.md"\nold\n/fragment';
+    await writeFile(destination, original, "utf8");
+    await writeFile(
+      join(cwd, "write-once.config.ts"),
+      `export default {
+  include: ["README.md"],
+  preparers: [{
+    id: "remote",
+    canPrepare: (reference) => reference.source.startsWith("https://"),
+    prepare: async () => ({ resources: [] }),
+  }],
+  resolvers: [{
+    id: "unmatched",
+    canResolve: (_source, context) => context.preparations?.length === 0,
+    resolve: () => { throw new Error("should not resolve"); },
+  }],
+};
+`,
+      "utf8",
+    );
+
+    const result = await runGenerate({ cwd });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.diagnostics[0]).toMatchObject({
+      stage: "resolve",
+      source: "https://example.com/source.md",
+      message: expect.stringContaining("No resolver supports source"),
+    });
+    expect(await readFile(destination, "utf8")).toBe(original);
   });
 
   it("reports unsupported references without modifying destinations", async () => {

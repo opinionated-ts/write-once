@@ -222,14 +222,17 @@ export async function resolveSourceReferences(
 
   const outcomes = await mapConcurrent(references, config.maxConcurrency, async (reference) => {
     const { source, destination, marker } = reference;
-    const relevantPreparations = preparations.filter((preparation) =>
+    // Resolve against the one preparation batch assigned to this exact reference.
+    // A resolver's capability check sees this scoped context, so its match is inferred
+    // from the reference and prepared state rather than a configured provider mapping.
+    const relevantPreparation = preparations.find((preparation) =>
       preparation.references.some((assigned) => referenceKey(assigned) === referenceKey(reference)),
     );
     const context: ResourceContext = {
       cwd: config.root,
       destination,
       reference,
-      preparations: relevantPreparations,
+      preparations: relevantPreparation === undefined ? [] : [relevantPreparation],
     };
     let resolver: ResourceResolver | undefined;
     try {
