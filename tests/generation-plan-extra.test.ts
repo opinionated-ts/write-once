@@ -207,12 +207,12 @@ describe("generation plan edge cases", () => {
     if (isFailure(result)) {
       expect(result.error.stage).toBe("hook");
       expect(result.error.message).toBe(
-        'Hook "invalid-output" must return text, fullText, or both.',
+        'Hook "invalid-output" must return exactly one of text or fullText.',
       );
     }
   });
 
-  it("awaits async hooks and accepts both replacement representations", async () => {
+  it("awaits async hooks and rejects conflicting replacement representations", async () => {
     const { root, config } = await setup();
     const destination = join(root, "README.md");
     const text = 'fragment source="./source.md"\nold\n/fragment';
@@ -248,7 +248,12 @@ describe("generation plan edge cases", () => {
         ],
       },
     });
-    expect(isSuccess(conflictingResult)).toBe(true);
-    if (isSuccess(conflictingResult)) expect(conflictingResult.value.outputText).toContain("body");
+    expect(isFailure(conflictingResult)).toBe(true);
+    if (isFailure(conflictingResult)) {
+      expect(conflictingResult.error.stage).toBe("hook");
+      expect(conflictingResult.error.message).toBe(
+        'Hook "conflicting" must return exactly one of text or fullText.',
+      );
+    }
   });
 });

@@ -50,7 +50,7 @@ Hooks currently run at the `pre-write` stage and are chained in registration ord
 - `text` is the current generated body.
 - `fullText` is the current complete block, including its delimiters.
 
-A hook may return `text`, `fullText`, or both. Returning only `text` changes the body while inheriting the previous `fullText`. Returning only `fullText` replaces the complete block; Write Once derives the corresponding `text` from that new block before invoking the next hook. Returning both lets the hook intentionally control both representations.
+A hook must return exactly one of `text` or `fullText`; returning both or neither is an error. Returning only `text` changes the body while inheriting the previous `fullText`. Returning only `fullText` replaces the complete block; Write Once derives the corresponding `text` from that new block before invoking the next hook.
 
 When a hook returns a full block that cannot be structurally recognized as a generated marker block, Write Once derives its body from the content between the first and last lines so the next hook can still receive both representations. The hook is responsible for intentionally producing the replacement it wants.
 

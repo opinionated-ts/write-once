@@ -18,7 +18,7 @@ Extensions are registered through the `preparers`, `resolvers`, `extractors`, an
 - **Preparers** select source references that need provider-specific setup and prepare resources before resolution.
 - **Resolvers** map the original source reference to a resource root and relative path. The source should carry its own path/format information; preparers and resolvers must use the same deterministic mapping instead of independently appending extensions. They return locations, not file contents.
 - **Extractors** select the content to reuse from a resolved resource, such as a whole file, named fragment, or range.
-- **Hooks** customize generated content before it is written. All `pre-write` hooks run in registration order, each receiving the current `text` and `fullText`. A hook may return either representation or both; Write Once derives `text` when a hook replaces only `fullText`.
+- **Hooks** customize generated content before it is written. All `pre-write` hooks run in registration order, each receiving the current `text` and `fullText`. A hook must return exactly one representation; Write Once derives `text` when a hook replaces only `fullText`.
 
 Registration order matters: the first matching preparer, resolver, or extractor is selected. Hooks are the exception: every `pre-write` hook runs sequentially.
 

@@ -462,10 +462,10 @@ async function planBlock(
 
     const hasText = typeof output?.text === "string";
     const hasFullText = typeof output?.fullText === "string";
-    if (!hasText && !hasFullText) {
+    if (hasText === hasFullText) {
       return diagnosticError(
         "hook",
-        `Hook "${hook.id}" must return text, fullText, or both.`,
+        `Hook "${hook.id}" must return exactly one of text or fullText.`,
         destination,
         marker,
       );
