@@ -9,7 +9,7 @@ The TypeScript API is for projects that need to customize how write-once prepare
 - `loadWriteOnceConfig({ cwd, configPath? })` loads and normalizes a configuration file, returning a Result.
 - `WriteOnceConfig` and `UserConfig` describe the supported configuration options.
 
-See the [configuration guide](configuration.md) for defaults and examples.
+See the [configuration guide](configuration.md) for defaults and examples, or the [plugin development guide](plugins.md) for end-to-end extension examples.
 
 ## Extension points
 
@@ -22,7 +22,7 @@ Extensions are registered through the `preparers`, `resolvers`, `extractors`, an
 
 Registration order matters: the first matching preparer, resolver, or extractor is selected. Only the first matching `pre-write` hook runs for each generated block; hooks are not chained.
 
-Use the exported contracts such as `ResourcePreparer`, `ResourceResolver`, `ContentExtractor`, `GenerationHook`, and `PluginContribution` to implement extensions. The built-in pipeline helpers are internal and are not exported from the package root.
+Use the exported contracts such as `ResourcePreparer`, `ResourceResolver`, `ContentExtractor`, `GenerationHook`, and `PluginContribution` to implement extensions. The built-in pipeline helpers are internal and are not exported from the package root. See the [plugin development guide](plugins.md) for capability matching, preparation scoping, metadata, and a complete example.
 
 ## Current limitations
 

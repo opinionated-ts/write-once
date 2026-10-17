@@ -86,4 +86,5 @@ TypeScript and JavaScript config files execute user code when loaded. Only load 
 **Other guides:**
 
 - [TypeScript API](api.md)
+- [Plugin development](plugins.md)
 - [README and quick start](../README.md)

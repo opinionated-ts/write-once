@@ -70,7 +70,7 @@ The current v1 release resolves local files. It plans and validates destinations
 - [Configuration](docs/configuration.md) — choose which files write-once processes and tune its behavior.
 - [CLI workflow](docs/cli.md) — run generation and understand diagnostics and failure behavior.
 
-For advanced customization, see the [TypeScript API](docs/api.md).
+For advanced customization, see the [TypeScript API](docs/api.md) and the [plugin development guide](docs/plugins.md).
 
 ## What's next
 
