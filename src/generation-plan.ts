@@ -185,9 +185,57 @@ function selectExtractor(
   return extractors.find((extractor) => extractor.canExtract(resource, selector, context));
 }
 
-function selectHook(hooks: readonly GenerationHook[]): GenerationHook | undefined {
-  // V1 runs one hook per destination block: the first registered matching hook.
-  return hooks.find((hook) => hook.stage === "pre-write");
+function selectHooks(hooks: readonly GenerationHook[]): readonly GenerationHook[] {
+  return hooks.filter((hook) => hook.stage === "pre-write");
+}
+
+interface HookState {
+  text: string;
+  fullText: string;
+  fullTextBodySpan: TextSpan;
+  fullTextChanged: boolean;
+}
+
+function bodySpanWithinBlock(marker: MarkerBlock): TextSpan {
+  return {
+    start: marker.bodySpan.start - marker.span.start,
+    end: marker.bodySpan.end - marker.span.start,
+  };
+}
+
+function splitHookFullText(
+  fullText: string,
+  destination: string,
+): { text: string; bodySpan: TextSpan } {
+  const scanned = scanMarkers(fullText, { resource: destination });
+  if (scanned.ok) {
+    const generatedBlocks = scanned.value.blocks.filter(
+      (block) => block.opening.attributes.source !== undefined,
+    );
+    if (generatedBlocks.length === 1) {
+      const block = generatedBlocks[0]!;
+      return {
+        text: fullText.slice(block.bodySpan.start, block.bodySpan.end),
+        bodySpan: block.bodySpan,
+      };
+    }
+  }
+
+  const firstLineEnd = fullText.search(/\r?\n/);
+  if (firstLineEnd < 0) {
+    return { text: fullText, bodySpan: { start: 0, end: fullText.length } };
+  }
+  const newlineLength = fullText[firstLineEnd] === "\r" ? 2 : 1;
+  const lastNewlineStart = Math.max(fullText.lastIndexOf("\n"), fullText.lastIndexOf("\r"));
+  const bodyStart = firstLineEnd + newlineLength;
+  if (lastNewlineStart <= bodyStart) {
+    return { text: "", bodySpan: { start: bodyStart, end: bodyStart } };
+  }
+
+  return {
+    text: fullText.slice(bodyStart, lastNewlineStart),
+    bodySpan: { start: bodyStart, end: lastNewlineStart },
+  };
 }
 
 function prepareBodyText(replacement: string, destination: string): string {
@@ -195,6 +243,20 @@ function prepareBodyText(replacement: string, destination: string): string {
   let prepared = replacement.replace(/\r\n|\r|\n/g, newline);
   if (prepared.length > 0 && !/[\r\n]$/.test(prepared)) prepared += newline;
   return prepared;
+}
+
+function replaceSpan(text: string, span: TextSpan, replacement: string): string {
+  return text.slice(0, span.start) + replacement + text.slice(span.end);
+}
+
+function prepareExistingBodyText(text: string, span: TextSpan, replacement: string): string {
+  const newline = /\r\n|\r|\n/.exec(text)?.[0] ?? "\n";
+  const normalized = replacement.replace(/\r\n|\r|\n/g, newline);
+  const existingBody = text.slice(span.start, span.end);
+  if (/[\r\n]$/.test(existingBody)) {
+    return /[\r\n]$/.test(normalized) ? normalized : normalized + newline;
+  }
+  return normalized.replace(/[\r\n]+$/, "");
 }
 
 function validSpan(span: TextSpan, length: number): boolean {
@@ -355,15 +417,25 @@ async function planBlock(
     );
   }
 
-  let output: HookOutput = { text: extracted.text };
-  const hook = selectHook(config.hooks);
-  if (hook !== undefined) {
+  const originalFullText = text.slice(marker.span.start, marker.span.end);
+  let hookState: HookState = {
+    text: extracted.text,
+    fullText: originalFullText,
+    fullTextBodySpan: bodySpanWithinBlock(marker),
+    fullTextChanged: false,
+  };
+
+  for (const hook of selectHooks(config.hooks)) {
+    let output: HookOutput;
     try {
+      // Hooks are intentionally sequential: each receives the previous hook's state.
+      // oxlint-disable-next-line no-await-in-loop
       output = await hook.run({
         stage: "pre-write",
         destination,
         marker,
-        content: extracted.text,
+        text: hookState.text,
+        fullText: hookState.fullText,
         sourceReference: source,
         selector,
         source: resource,
@@ -377,37 +449,59 @@ async function planBlock(
         cause,
       );
     }
-  }
 
-  const hasText = typeof output === "object" && output !== null && typeof output.text === "string";
-  const hasFullText =
-    typeof output === "object" && output !== null && typeof output.fullText === "string";
-  if (hasText === hasFullText) {
-    return diagnosticError(
-      "hook",
-      "Hook returned an invalid replacement value.",
-      destination,
-      marker,
-    );
+    const hasText = typeof output?.text === "string";
+    const hasFullText = typeof output?.fullText === "string";
+    if (!hasText && !hasFullText) {
+      return diagnosticError(
+        "hook",
+        `Hook "${hook.id}" must return text, fullText, or both.`,
+        destination,
+        marker,
+      );
+    }
+
+    if (hasFullText) {
+      try {
+        const split = splitHookFullText(output.fullText!, destination);
+        hookState = {
+          text: hasText ? output.text! : split.text,
+          fullText: output.fullText!,
+          fullTextBodySpan: split.bodySpan,
+          fullTextChanged: output.fullText !== originalFullText,
+        };
+      } catch (cause) {
+        return diagnosticError(
+          "hook",
+          `Hook "${hook.id}" returned invalid fullText.`,
+          destination,
+          marker,
+          cause,
+        );
+      }
+    } else {
+      hookState = {
+        ...hookState,
+        text: output.text!,
+      };
+    }
   }
 
   let replacement: PlannedReplacement;
-  if (typeof output.fullText === "string") {
-    replacement = { span: marker.span, text: output.fullText, source, selector };
-  } else if (typeof output.text === "string") {
+  if (hookState.fullTextChanged) {
+    const fullText = replaceSpan(
+      hookState.fullText,
+      hookState.fullTextBodySpan,
+      prepareExistingBodyText(hookState.fullText, hookState.fullTextBodySpan, hookState.text),
+    );
+    replacement = { span: marker.span, text: fullText, source, selector };
+  } else {
     replacement = {
       span: marker.bodySpan,
-      text: prepareBodyText(output.text, text),
+      text: prepareBodyText(hookState.text, text),
       source,
       selector,
     };
-  } else {
-    return diagnosticError(
-      "hook",
-      "Hook returned an invalid replacement value.",
-      destination,
-      marker,
-    );
   }
 
   if (!validSpan(replacement.span, text.length)) {

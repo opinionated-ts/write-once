@@ -18,9 +18,9 @@ Extensions are registered through the `preparers`, `resolvers`, `extractors`, an
 - **Preparers** select source references that need provider-specific setup and prepare resources before resolution.
 - **Resolvers** map a source reference to a resource root and relative path. They return locations, not file contents.
 - **Extractors** select the content to reuse from a resolved resource, such as a whole file, named fragment, or range.
-- **Hooks** customize generated content before it is written. A hook can return `{ text }` to replace only the generated body or `{ fullText }` to rebuild the wider marker block.
+- **Hooks** customize generated content before it is written. All `pre-write` hooks run in registration order, each receiving the current `text` and `fullText`. A hook may return either representation or both; Write Once derives `text` when a hook replaces only `fullText`.
 
-Registration order matters: the first matching preparer, resolver, or extractor is selected. Only the first matching `pre-write` hook runs for each generated block; hooks are not chained.
+Registration order matters: the first matching preparer, resolver, or extractor is selected. Hooks are the exception: every `pre-write` hook runs sequentially.
 
 Use the exported contracts such as `ResourcePreparer`, `ResourceResolver`, `ContentExtractor`, `GenerationHook`, and `PluginContribution` to implement extensions. The built-in pipeline helpers are internal and are not exported from the package root. See the [plugin development guide](plugins.md) for capability matching, preparation scoping, metadata, and a complete example.
 

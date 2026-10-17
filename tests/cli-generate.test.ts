@@ -175,7 +175,7 @@ describe("runGenerate", () => {
     await writeFile(
       join(cwd, "write-once.config.ts"),
       `import { writeFile } from "node:fs/promises";
-export default { hooks: [{ id: "mutate-destination", stage: "pre-write", async run(context) { await writeFile(context.destination, "changed externally", "utf8"); return { text: context.content }; } }] };`,
+export default { hooks: [{ id: "mutate-destination", stage: "pre-write", async run(context) { await writeFile(context.destination, "changed externally", "utf8"); return { text: context.text }; } }] };`,
       "utf8",
     );
 

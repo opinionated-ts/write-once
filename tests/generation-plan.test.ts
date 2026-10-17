@@ -125,7 +125,7 @@ describe("planDestinationFile", () => {
     const hook: GenerationHook = {
       id: "wrap",
       stage: "pre-write",
-      run: ({ content }) => ({ fullText: `<!-- rebuilt -->\n${content}\n<!-- /rebuilt -->` }),
+      run: ({ text }) => ({ fullText: `<!-- rebuilt -->\n${text}\n<!-- /rebuilt -->` }),
     };
     const text = '<!-- fragment source="./source.md" -->\nold\n<!-- /fragment -->';
     const result = await planDestinationFile({

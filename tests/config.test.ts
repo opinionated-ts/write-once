@@ -23,7 +23,7 @@ const extractor: ContentExtractor = {
 const hook: GenerationHook = {
   id: "format",
   stage: "pre-write",
-  run: ({ content }) => ({ text: content }),
+  run: ({ text }) => ({ text }),
 };
 
 describe("validateConfig", () => {

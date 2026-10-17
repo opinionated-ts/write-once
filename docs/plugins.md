@@ -9,7 +9,7 @@ The project does not currently load, install, or discover third-party plugins au
 1. **Prepare resources.** For each source reference, the first preparer whose `canPrepare(reference, context)` returns `true` is selected. Write Once groups references by that preparer and calls `prepare` once for its batch.
 2. **Resolve the reference.** Resolvers are checked in registration order. Their `canResolve(source, context)` receives the reference's applicable context: if a preparer was selected, the context contains only that preparer's batch. A resolver can infer its association from the source and prepared context; no shared function identity, provider ID mapping, or separate registry is required. If no preparer claims the source, resolver-only handling remains possible with an empty `preparation`. The first compatible resolver wins; if none matches, generation reports a resolution diagnostic.
 3. **Load and extract content.** The core validates the resolver's root and relative path, loads source text, and selects the first compatible extractor. Configured extractors are checked before the built-in named-fragment, range, and whole-file extractors. Only one extractor handles a reference. If the selected extractor fails, generation reports the extraction failure; Write Once does not silently try another extractor.
-4. **Customize output.** The first registered `pre-write` hook runs for a generated block. Hooks are not chained. Without a matching hook, the extracted text is used as-is.
+4. **Customize output.** Every registered `pre-write` hook runs for a generated block in registration order. Each hook receives the current `text` and `fullText` state produced by the previous hook. Without a matching hook, the extracted text is used as-is.
 5. **Write destinations.** The pipeline plans and validates destination output before writing. A failure during preparation, resolution, extraction, or a hook prevents destination writes for that generation plan. Writes are atomic per file, not across the entire project.
 
 Registration order is the conflict-resolution rule for matching capabilities. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
@@ -45,12 +45,16 @@ Custom extractors run before the built-ins, so registration order determines whi
 
 ### `GenerationHook`
 
-Hooks currently run at the `pre-write` stage. Return exactly one replacement scope:
+Hooks currently run at the `pre-write` stage and are chained in registration order. Every hook receives both representations of the current block:
 
-- `{ text }` replaces only the generated body and preserves marker delimiters.
-- `{ fullText }` replaces the complete marker block, including delimiters.
+- `text` is the current generated body.
+- `fullText` is the current complete block, including its delimiters.
 
-A hook should be deterministic and should not write destination files itself. All `pre-write` hooks are intended to run in registration order; see the hook chaining policy below.
+A hook may return `text`, `fullText`, or both. Returning only `text` changes the body while inheriting the previous `fullText`. Returning only `fullText` replaces the complete block; Write Once derives the corresponding `text` from that new block before invoking the next hook. Returning both lets the hook intentionally control both representations.
+
+When a hook returns a full block that cannot be structurally recognized as a generated marker block, Write Once derives its body from the content between the first and last lines so the next hook can still receive both representations. The hook is responsible for intentionally producing the replacement it wants.
+
+A hook should be deterministic and should not write destination files itself. Hooks execute sequentially because each hook receives the state produced by the previous one.
 
 ## Example provider plugin
 
@@ -163,8 +167,8 @@ import type { GenerationHook } from "write-once";
 export const textFenceHook = {
   id: "text-fence",
   stage: "pre-write",
-  run({ content }) {
-    return { text: `\`\`\`text\n${content}\n\`\`\`` };
+  run({ text }) {
+    return { text: `\`\`\`text\n${text}\n\`\`\`` };
   },
 } satisfies GenerationHook;
 ```

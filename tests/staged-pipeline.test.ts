@@ -227,9 +227,9 @@ export default {
   hooks: [{
     id: "fail-on-B",
     stage: "pre-write",
-    run({ destination, content }) {
+    run({ destination, text }) {
       if (destination.endsWith("B.md")) throw new Error("intentional hook failure");
-      return { text: content };
+      return { text };
     },
   }],
 };

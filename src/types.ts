@@ -280,8 +280,10 @@ export interface HookContext {
   destination: string;
   /** Exact marker tokens, delimiter-line spans, body span, and full block span. */
   marker: MarkerBlock;
-  /** Extracted source text before the hook runs. */
-  content: string;
+  /** Current generated body text. */
+  text: string;
+  /** Current complete generated block, including its marker delimiters. */
+  fullText: string;
   /** Original source reference from the destination marker. */
   sourceReference?: string;
   /** Selector used to extract content from the resolved resource. */
@@ -290,14 +292,14 @@ export interface HookContext {
   source?: ResolvedContent;
 }
 
-/** Body-only text preserves marker lines; fullText replaces the complete block. */
-export type HookOutput = { text: string; fullText?: never } | { fullText: string; text?: never };
+/** A hook may replace the body, the complete block, or both representations. */
+export type HookOutput = { text?: string; fullText?: string };
 
 /**
  * Customizes content at a named generation stage.
  *
- * Hooks may be synchronous or asynchronous. The first hook registered for a
- * supported stage is selected. A hook must return an explicit replacement scope.
+ * Hooks may be synchronous or asynchronous. All hooks for a supported stage run
+ * in registration order. A hook must return at least one replacement representation.
  */
 export interface GenerationHook {
   id: string;

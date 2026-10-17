@@ -41,7 +41,7 @@ describe("pre-write hook contract", () => {
       stage: "pre-write",
       run: (context) => {
         received = context;
-        return { text: context.content.toUpperCase() };
+        return { text: context.text.toUpperCase() };
       },
     };
 
@@ -69,7 +69,8 @@ describe("pre-write hook contract", () => {
       destination,
       sourceReference: "./source.md",
       selector: { kind: "whole" },
-      content: "fresh\n",
+      text: "fresh\n",
+      fullText: text,
       source: { location: join(root, "source.md"), text: "fresh\n" },
       marker: { span: { start: 0, end: text.length } },
     });
@@ -94,7 +95,10 @@ describe("pre-write hook contract", () => {
     const hook: GenerationHook = {
       id: "rebuild",
       stage: "pre-write",
-      run: () => ({ fullText: "rebuilt block" }),
+      run: () => ({
+        fullText:
+          'prefix <!-- fragment source="./source.md" --> suffix\nrebuilt\nsuffix <!-- /fragment --> trailing',
+      }),
     };
 
     const result = await planDestinationFile({
@@ -106,16 +110,33 @@ describe("pre-write hook contract", () => {
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
       expect(result.value.replacements[0]?.span).toEqual({ start: 0, end: text.length });
-      expect(result.value.outputText).toBe("rebuilt block");
+      expect(result.value.outputText).toBe(
+        'prefix <!-- fragment source="./source.md" --> suffix\nrebuilt\nsuffix <!-- /fragment --> trailing',
+      );
     }
   });
 
-  it("selects the first matching hook by registration order without chaining", async () => {
+  it("chains pre-write hooks in registration order", async () => {
     const { root, config } = await setup();
     const text = 'fragment source="./source.md"\nold\n/fragment';
+    const received: HookContext[] = [];
     const hooks: GenerationHook[] = [
-      { id: "first", stage: "pre-write", run: () => ({ text: "first" }) },
-      { id: "second", stage: "pre-write", run: () => ({ text: "second" }) },
+      {
+        id: "first",
+        stage: "pre-write",
+        run: (context) => {
+          received.push(context);
+          return { text: "first" };
+        },
+      },
+      {
+        id: "second",
+        stage: "pre-write",
+        run: (context) => {
+          received.push(context);
+          return { text: context.text + " second" };
+        },
+      },
     ];
 
     const result = await planDestinationFile({
@@ -125,7 +146,72 @@ describe("pre-write hook contract", () => {
     });
 
     expect(isSuccess(result)).toBe(true);
-    if (isSuccess(result)) expect(result.value.outputText).toContain("first");
+    expect(received).toHaveLength(2);
+    expect(received[0]?.text).toBe("fresh\n");
+    expect(received[1]?.text).toBe("first");
+    expect(received[1]?.fullText).toBe(text);
+    if (isSuccess(result)) expect(result.value.outputText).toContain("first second");
+  });
+
+  it("derives text from a fullText hook result for the next hook", async () => {
+    const { root, config } = await setup();
+    const text =
+      'prefix <!-- fragment source="./source.md" --> suffix\nold\nsuffix <!-- /fragment --> trailing';
+    let received: HookContext | undefined;
+    const hooks: GenerationHook[] = [
+      {
+        id: "rebuild",
+        stage: "pre-write",
+        run: () => ({
+          fullText:
+            'prefix <!-- fragment source="./source.md" --> suffix\nrebuilt\nsuffix <!-- /fragment --> trailing',
+        }),
+      },
+      {
+        id: "decorate",
+        stage: "pre-write",
+        run: (context) => {
+          received = context;
+          return { text: `[${context.text.trim()}]` };
+        },
+      },
+    ];
+
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text,
+      config: { ...config, hooks },
+    });
+
+    expect(isSuccess(result)).toBe(true);
+    expect(received?.text).toBe("rebuilt\n");
+    expect(received?.fullText).toContain("rebuilt");
+    if (isSuccess(result)) {
+      expect(result.value.outputText).toContain("[rebuilt]");
+      expect(result.value.outputText).toContain("suffix <!-- /fragment --> trailing");
+    }
+  });
+
+  it("allows a hook to return both text and fullText", async () => {
+    const { root, config } = await setup();
+    const text = 'fragment source="./source.md"\nold\n/fragment';
+    const hook: GenerationHook = {
+      id: "both",
+      stage: "pre-write",
+      run: () => ({
+        text: "body",
+        fullText: 'fragment source="./source.md"\nfull\n/fragment',
+      }),
+    };
+
+    const result = await planDestinationFile({
+      destination: join(root, "README.md"),
+      text,
+      config: { ...config, hooks: [hook] },
+    });
+
+    expect(isSuccess(result)).toBe(true);
+    if (isSuccess(result)) expect(result.value.outputText).toContain("body");
   });
 
   it("surfaces rejected hooks and leaves destination files untouched", async () => {

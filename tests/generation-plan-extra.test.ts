@@ -206,11 +206,13 @@ describe("generation plan edge cases", () => {
     expect(isFailure(result)).toBe(true);
     if (isFailure(result)) {
       expect(result.error.stage).toBe("hook");
-      expect(result.error.message).toBe("Hook returned an invalid replacement value.");
+      expect(result.error.message).toBe(
+        'Hook "invalid-output" must return text, fullText, or both.',
+      );
     }
   });
 
-  it("awaits async hooks and rejects conflicting replacement scopes", async () => {
+  it("awaits async hooks and accepts both replacement representations", async () => {
     const { root, config } = await setup();
     const destination = join(root, "README.md");
     const text = 'fragment source="./source.md"\nold\n/fragment';
@@ -224,7 +226,7 @@ describe("generation plan edge cases", () => {
           {
             id: "async",
             stage: "pre-write",
-            run: async ({ content }) => ({ text: content.toUpperCase() }),
+            run: async ({ text: hookText }) => ({ text: hookText.toUpperCase() }),
           },
         ],
       },
@@ -246,7 +248,7 @@ describe("generation plan edge cases", () => {
         ],
       },
     });
-    expect(isFailure(conflictingResult)).toBe(true);
-    if (isFailure(conflictingResult)) expect(conflictingResult.error.stage).toBe("hook");
+    expect(isSuccess(conflictingResult)).toBe(true);
+    if (isSuccess(conflictingResult)) expect(conflictingResult.value.outputText).toContain("body");
   });
 });

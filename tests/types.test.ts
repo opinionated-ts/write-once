@@ -73,7 +73,7 @@ describe("public types", () => {
     const markdownHook: GenerationHook = {
       id: "markdown-fence",
       stage: "pre-write",
-      run: ({ content }) => ({ text: "```text\n" + content + "\n```" }),
+      run: ({ text }) => ({ text: "```text\n" + text + "\n```" }),
     };
     const hookOnlyPlugin: PluginContribution = {
       name: "markdown",
