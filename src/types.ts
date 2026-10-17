@@ -199,7 +199,7 @@ export interface ResourceContext {
   destination?: string;
   reference?: SourceReferenceContext;
   metadata?: Readonly<Record<string, unknown>>;
-  preparation?: PreparedResourceBatch;
+  preparation?: Omit<PreparedResourceBatch, "references">;
 }
 
 /** The selected text and its location within the source resource, when known. */

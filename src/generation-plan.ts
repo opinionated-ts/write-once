@@ -282,19 +282,29 @@ export async function resolveSourceReferences(
   const resolved = new Map<string, ResolvedReference>();
   const resolvers = [...config.resolvers, localSourceResolver];
 
+  // Build the reference-to-batch index once instead of scanning every batch for every resolver candidate.
+  const preparationByReference = new Map<string, PreparedResourceBatch>();
+  for (const preparation of preparations) {
+    for (const reference of preparation.references) {
+      preparationByReference.set(referenceKey(reference), preparation);
+    }
+  }
+
   const outcomes = await mapConcurrent(references, config.maxConcurrency, async (reference) => {
     const { source, destination, marker } = reference;
-    // Resolve against the one preparation batch assigned to this exact reference.
-    // A resolver's capability check sees this scoped context, so its match is inferred
-    // from the reference and prepared state rather than a configured provider mapping.
-    const relevantPreparation = preparations.find((preparation) =>
-      preparation.references.some((assigned) => referenceKey(assigned) === referenceKey(reference)),
-    );
+    const assignedPreparation = preparationByReference.get(referenceKey(reference));
     const context: ResourceContext = {
       cwd: config.root,
       destination,
       reference,
-      preparation: relevantPreparation,
+      preparation:
+        assignedPreparation === undefined
+          ? undefined
+          : {
+              preparerId: assignedPreparation.preparerId,
+              workingDirectory: assignedPreparation.workingDirectory,
+              result: assignedPreparation.result,
+            },
     };
     let resolver: ResourceResolver | undefined;
     try {

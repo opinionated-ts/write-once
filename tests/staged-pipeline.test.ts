@@ -81,8 +81,8 @@ export default {
       id: "prepared",
       canResolve: (source, context) =>
         (source.startsWith("alpha:") || source.startsWith("beta:")) &&
-        context.preparation !== undefined &&
-        context.preparation?.references.some((reference) => reference.source === source) === true,
+        context.preparation?.preparerId === (source.startsWith("alpha:") ? "alpha" : "beta") &&
+        !("references" in context.preparation),
       async resolve(source, context) {
         await record(context.cwd, "resolve:" + source);
         const resource = context.preparation?.result.resources.find(
@@ -121,8 +121,8 @@ import { join } from "node:path";
 
 const matchesPreparedReference = (source, context) =>
   source.startsWith("alpha:") &&
-  context.preparation !== undefined &&
-  context.preparation?.references.some((reference) => reference.source === source) === true;
+  context.preparation?.preparerId === "alpha" &&
+  !("references" in context.preparation);
 
 export default {
   include: ["README.md"],
