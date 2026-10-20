@@ -1,6 +1,7 @@
 import { defineCommand, runMain } from "citty";
 
 import { runGenerate } from "./cli/generate.js";
+import { createCliProgressReporter } from "./cli/progress.js";
 import { formatDiagnostic } from "./diagnostics.js";
 import { CLI_VERSION } from "./version.js";
 
@@ -17,7 +18,17 @@ const generateCommand = defineCommand({
     },
   },
   async run({ args }) {
-    const result = await runGenerate({ configPath: args.config });
+    const progress = createCliProgressReporter({
+      isTTY: process.stderr.isTTY,
+      write: (text) => process.stderr.write(text),
+    });
+    const result = await (async () => {
+      try {
+        return await runGenerate({ configPath: args.config, onProgress: progress.report });
+      } finally {
+        progress.dispose();
+      }
+    })();
 
     for (const diagnostic of result.diagnostics) {
       console.error(formatDiagnostic(diagnostic));

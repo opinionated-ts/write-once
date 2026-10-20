@@ -67,6 +67,7 @@ describe("prepareSourceReferences", () => {
     let workingDirectory = "";
     let workspaceDirectory = "";
     let preparationCount = 0;
+    const events: Array<{ phase: string; pluginId: string; message: string }> = [];
     const configured: NormalizedWriteOnceConfig = {
       ...config,
       preparers: [
@@ -78,6 +79,7 @@ describe("prepareSourceReferences", () => {
             workingDirectory = context.workingDirectory;
             workspaceDirectory = context.workspaceDirectory;
             workspaces.push(workspaceDirectory);
+            context.reportProgress("Checking persistent cache.");
             await mkdir(workspaceDirectory, { recursive: true });
             try {
               await access(join(workspaceDirectory, "cached.txt"));
@@ -90,22 +92,36 @@ describe("prepareSourceReferences", () => {
       ],
     };
 
-    const first = await prepareSourceReferences(references, configured);
+    const first = await prepareSourceReferences(references, configured, (event) =>
+      events.push(event),
+    );
     await expect(access(workingDirectory)).resolves.toBeUndefined();
     await expect(access(join(workspaceDirectory, "cached.txt"))).resolves.toBeUndefined();
     await cleanupPreparedResources(first);
     await expect(access(workingDirectory)).rejects.toMatchObject({ code: "ENOENT" });
     await expect(access(join(workspaceDirectory, "cached.txt"))).resolves.toBeUndefined();
 
-    const second = await prepareSourceReferences(references, configured);
+    const second = await prepareSourceReferences(references, configured, (event) =>
+      events.push(event),
+    );
     expect(second.preparations[0]?.workspaceDirectory).toBe(workspaceDirectory);
     expect(preparationCount).toBe(2);
+    expect(events.map((event) => event.phase)).toEqual([
+      "start",
+      "progress",
+      "success",
+      "start",
+      "progress",
+      "success",
+    ]);
+    expect(events[1]?.message).toContain("Checking persistent cache.");
     await cleanupPreparedResources(second);
   });
 
   it("cleans a preparer's temporary directory when preparation rejects with a non-Error value", async () => {
     const { config, references } = await setup();
     let workingDirectory = "";
+    const events: Array<{ phase: string; pluginId: string; message: string }> = [];
     const configured: NormalizedWriteOnceConfig = {
       ...config,
       preparers: [
@@ -122,7 +138,7 @@ describe("prepareSourceReferences", () => {
 
     let failure: unknown;
     try {
-      await prepareSourceReferences(references, configured);
+      await prepareSourceReferences(references, configured, (event) => events.push(event));
     } catch (cause) {
       failure = cause;
     }
@@ -133,6 +149,7 @@ describe("prepareSourceReferences", () => {
       message: expect.stringContaining("provider unavailable"),
     });
     expect(workingDirectory).not.toBe("");
+    expect(events.map((event) => event.phase)).toEqual(["start", "failure"]);
     await expect(access(workingDirectory)).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

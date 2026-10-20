@@ -12,7 +12,7 @@ The project does not currently load, install, or discover third-party plugins au
 4. **Customize output.** Every registered `pre-write` hook runs for a generated block in registration order. Each hook receives the current `text` and `fullText` state produced by the previous hook. Without a matching hook, the extracted text is used as-is.
 5. **Write destinations.** The pipeline plans and validates destination output before writing. A failure during preparation, resolution, extraction, or a hook prevents destination writes for that generation plan. Writes are atomic per file, not across the entire project.
 
-Direct capability arrays are registered first, followed by plugin contributions in `plugins` array order. Contribution objects are used as provided; factories are invoked once during configuration validation, so use a closure when the factory needs options (for example, `() => createPlugin(options)`). Within each capability, registration order is the conflict-resolution rule. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
+Direct capability arrays are registered first, followed by plugin contributions in `plugins` array order. Contribution objects are used as provided; factories are invoked once during configuration validation, so use a closure when the factory needs options (for example, `() => createPlugin(options)`). A contribution's optional `name` is used in progress messages; when omitted, the preparer's `id` is shown. Within each capability, registration order is the conflict-resolution rule. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
 
 ## Preparation contracts
 
@@ -22,6 +22,7 @@ Direct capability arrays are registered first, followed by plugin contributions 
 - `prepare(references, context)` may be asynchronous and receives all references assigned to that preparer for the run.
 - `context.workingDirectory` is a Write Once-managed temporary directory for per-run files. Write Once removes it after generation, including failure paths.
 - `context.workspaceDirectory` is a stable directory scoped to the project root and preparer ID. It survives generation runs and is never removed by core cleanup.
+- `context.reportProgress(message)` emits a contextual status update for long-running work. The CLI delays display briefly to avoid noise from fast operations; plugin code does not need to implement a spinner.
 - Put disposable files in `workingDirectory` and reusable materialized data, such as a local repository checkout, in `workspaceDirectory`. The plugin owns persistent workspace contents, invalidation, and cleanup.
 - Return `{ resources, metadata? }`. `metadata` belongs to the whole batch and must be a record-like object when supplied.
 

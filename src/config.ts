@@ -62,6 +62,7 @@ export interface NormalizedWriteOnceConfig {
   resolvers: readonly ResourceResolver[];
   extractors: readonly ContentExtractor[];
   hooks: readonly GenerationHook[];
+  pluginNames: ReadonlyMap<ResourcePreparer, string>;
 }
 
 function invalid(message: string, field?: string) {
@@ -267,6 +268,14 @@ export function validateConfig(
     return invalid("Identifiers must be unique within each capability category.");
   }
 
+  const pluginNames = new Map<ResourcePreparer, string>();
+  for (const contribution of contributions) {
+    if (contribution.name === undefined || contribution.name.trim().length === 0) continue;
+    for (const preparer of contribution.preparers ?? []) {
+      if (isPreparer(preparer)) pluginNames.set(preparer, contribution.name);
+    }
+  }
+
   return ok({
     root: resolve(cwd, typeof root === "string" ? root : "."),
     include: [...includePatterns],
@@ -278,5 +287,6 @@ export function validateConfig(
     resolvers: [...resolvers],
     extractors: [...extractors],
     hooks: [...hooks],
+    pluginNames,
   });
 }

@@ -31,6 +31,7 @@ function config(
     resolvers: [],
     extractors: [],
     hooks: [],
+    pluginNames: new Map(),
   };
 }
 

@@ -5,6 +5,8 @@ import { isAbsolute, relative, resolve, sep, join } from "node:path";
 
 import type { NormalizedWriteOnceConfig } from "./config.js";
 import type {
+  GenerationProgressEvent,
+  GenerationProgressReporter,
   PreparedResource,
   PreparedResourceBatch,
   ResourcePreparationResult,
@@ -99,9 +101,21 @@ function validatePreparationResult(
 }
 
 // Batch all references first, then invoke each selected preparer once in registration order.
+function emitProgress(
+  reporter: GenerationProgressReporter | undefined,
+  event: GenerationProgressEvent,
+): void {
+  try {
+    reporter?.(event);
+  } catch {
+    // Reporting must never interrupt resource preparation.
+  }
+}
+
 export async function prepareSourceReferences(
   references: readonly SourceReferenceContext[],
   config: NormalizedWriteOnceConfig,
+  onProgress?: GenerationProgressReporter,
 ): Promise<PreparedSourceResources> {
   const workingDirectories: string[] = [];
   const preparations: PreparedResourceBatch[] = [];
@@ -148,19 +162,54 @@ export async function prepareSourceReferences(
             join(baseDirectory, `${safeDirectoryName(preparer.id)}-`),
           );
           workingDirectories.push(workingDirectory);
+          const pluginName = config.pluginNames.get(preparer);
+          const displayName = pluginName ?? preparer.id;
+          emitProgress(onProgress, {
+            pluginId: preparer.id,
+            ...(pluginName === undefined ? {} : { pluginName }),
+            phase: "start",
+            message: `Plugin "${displayName}" is preparing resources. This may take some time...`,
+          });
           const result = await preparer.prepare(batchReferences, {
             cwd: config.root,
             workingDirectory,
             workspaceDirectory,
+            reportProgress(message) {
+              if (message.trim().length === 0) return;
+              emitProgress(onProgress, {
+                pluginId: preparer.id,
+                ...(pluginName === undefined ? {} : { pluginName }),
+                phase: "progress",
+                message: `Plugin "${displayName}": ${message}`,
+              });
+            },
+          });
+          const validatedResult = validatePreparationResult(
+            result,
+            workingDirectory,
+            workspaceDirectory,
+          );
+          emitProgress(onProgress, {
+            pluginId: preparer.id,
+            ...(pluginName === undefined ? {} : { pluginName }),
+            phase: "success",
+            message: `Plugin "${displayName}" finished preparing resources.`,
           });
           return {
             preparerId: preparer.id,
             workingDirectory,
             workspaceDirectory,
             references: batchReferences,
-            result: validatePreparationResult(result, workingDirectory, workspaceDirectory),
+            result: validatedResult,
           };
         } catch (cause) {
+          const pluginName = config.pluginNames.get(preparer);
+          emitProgress(onProgress, {
+            pluginId: preparer.id,
+            ...(pluginName === undefined ? {} : { pluginName }),
+            phase: "failure",
+            message: `Plugin "${pluginName ?? preparer.id}" failed while preparing resources.`,
+          });
           throw new ResourcePreparationFailure(
             preparer.id,
             batchReferences,

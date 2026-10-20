@@ -151,7 +151,22 @@ export interface ResourcePreparationContext {
   workingDirectory: string;
   /** A stable, preparer-specific workspace that survives generation runs. */
   workspaceDirectory: string;
+  /** Report a contextual status message while this preparer is active. */
+  reportProgress(message: string): void;
 }
+
+/** A lifecycle or status event from a plugin operation during generation. */
+export interface GenerationProgressEvent {
+  /** The ID of the registered preparer responsible for this operation. */
+  pluginId: string;
+  /** The plugin contribution name, when one was provided. */
+  pluginName?: string;
+  phase: "start" | "progress" | "success" | "failure";
+  message: string;
+}
+
+/** Receives progress events without coupling extensions to CLI output. */
+export type GenerationProgressReporter = (event: GenerationProgressEvent) => void;
 
 /** A resource root materialized by a preparation batch. */
 export interface PreparedResource {

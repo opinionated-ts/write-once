@@ -1,7 +1,7 @@
 import { isFailure } from "@opinionated-ts/result";
 import { readFile } from "node:fs/promises";
 
-import type { Diagnostic, SourceReferenceContext } from "../types.js";
+import type { Diagnostic, GenerationProgressReporter, SourceReferenceContext } from "../types.js";
 
 import { mapConcurrent } from "../async-pool.js";
 import { loadWriteOnceConfig } from "../config-loader.js";
@@ -26,6 +26,7 @@ import { createSourceIndexCache } from "../source-index-cache.js";
 export interface GenerateOptions {
   cwd?: string;
   configPath?: string;
+  onProgress?: GenerationProgressReporter;
 }
 
 export interface GenerateResult {
@@ -123,7 +124,7 @@ export async function runGenerate(options: GenerateOptions = {}): Promise<Genera
   const references = inputs.flatMap((input) => input.scan.references);
   let prepared;
   try {
-    prepared = await prepareSourceReferences(references, loaded.value.config);
+    prepared = await prepareSourceReferences(references, loaded.value.config, options.onProgress);
   } catch (cause) {
     const failure =
       cause instanceof ResourcePreparationFailure

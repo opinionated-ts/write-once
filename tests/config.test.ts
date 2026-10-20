@@ -46,6 +46,7 @@ describe("validateConfig", () => {
       resolvers: [],
       extractors: [],
       hooks: [],
+      pluginNames: new Map(),
     });
   });
 
@@ -82,7 +83,10 @@ describe("validateConfig", () => {
         hooks: [{ ...hook, id: "mixed-hook" }],
       };
     };
+    const namedPreparer = { ...preparer, id: "named-plugin-preparer" };
     const directPlugin = {
+      name: "GitHub",
+      preparers: [namedPreparer],
       hooks: [{ ...hook, id: "direct-plugin-hook" }],
     };
     const configuredFactory = (suffix: string) => () => ({
@@ -117,7 +121,8 @@ describe("validateConfig", () => {
         "plugin-extractor",
         "mixed-extractor",
       ]);
-      expect(result.value.preparers).toEqual([preparer]);
+      expect(result.value.preparers).toEqual([namedPreparer, preparer]);
+      expect(result.value.pluginNames.get(namedPreparer)).toBe("GitHub");
       expect(result.value.resolvers).toEqual([resolver]);
     }
   });
@@ -153,6 +158,7 @@ describe("validateConfig", () => {
     expect(isSuccess(result)).toBe(true);
     if (isSuccess(result)) {
       expect(result.value.preparers).toEqual([preparer]);
+      expect(result.value.pluginNames).toEqual(new Map());
       expect(result.value.resolvers).toEqual([resolver]);
       expect(result.value.extractors).toEqual([extractor]);
       expect(result.value.hooks).toEqual([hook]);
