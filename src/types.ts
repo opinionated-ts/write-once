@@ -144,8 +144,10 @@ export interface SourceReferenceContext {
 /** Context supplied to a preparer for one generation run. */
 export interface ResourcePreparationContext {
   cwd: string;
-  /** A Write Once-managed directory reserved for this preparer's resources. */
+  /** A Write Once-managed temporary directory removed after this generation run. */
   workingDirectory: string;
+  /** A stable, preparer-specific workspace that survives generation runs. */
+  workspaceDirectory: string;
 }
 
 /** A resource root materialized by a preparation batch. */
@@ -194,6 +196,7 @@ export interface ResolvedContent extends ResolvedResource {
 export interface PreparedResourceBatch {
   preparerId: string;
   workingDirectory: string;
+  workspaceDirectory: string;
   references: readonly SourceReferenceContext[];
   result: ResourcePreparationResult;
 }

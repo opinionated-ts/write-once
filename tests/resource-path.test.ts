@@ -71,6 +71,7 @@ describe("normalizeResolvedResource", () => {
       preparation: {
         preparerId: "repository",
         workingDirectory,
+        workspaceDirectory: workingDirectory,
         result: { resources: [{ root: preparedRoot }] },
       },
     };
@@ -98,6 +99,7 @@ describe("normalizeResolvedResource", () => {
       preparation: {
         preparerId: "repository",
         workingDirectory,
+        workspaceDirectory: workingDirectory,
         result: { resources: [{ root: preparedRoot }] },
       },
     };
@@ -190,6 +192,7 @@ describe("normalizeResolvedResource", () => {
             preparation: {
               preparerId: "repository",
               workingDirectory,
+              workspaceDirectory: workingDirectory,
               result: { resources: [{ root: join(workingDirectory, "escaped") }] },
             },
           },

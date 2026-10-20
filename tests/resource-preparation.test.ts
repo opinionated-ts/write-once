@@ -1,5 +1,5 @@
 import { isFailure } from "@opinionated-ts/result";
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -8,9 +8,10 @@ import type { NormalizedWriteOnceConfig } from "@/config";
 
 import { validateConfig } from "@/config";
 import { scanDestinationFile } from "@/generation-plan";
-import { prepareSourceReferences } from "@/resource-preparation";
+import { cleanupPreparedResources, prepareSourceReferences } from "@/resource-preparation";
 
 const directories: string[] = [];
+const workspaces: string[] = [];
 
 async function setup() {
   const root = await mkdtemp(join(tmpdir(), "write-once-preparation-unit-"));
@@ -32,7 +33,9 @@ async function setup() {
 
 afterEach(async () => {
   await Promise.all(
-    directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    [...directories.splice(0), ...workspaces.splice(0)].map((directory) =>
+      rm(directory, { recursive: true, force: true }),
+    ),
   );
 });
 
@@ -57,6 +60,47 @@ describe("prepareSourceReferences", () => {
       preparerId: "broken-trigger",
       message: expect.stringContaining('failed for source "repo:source.md"'),
     });
+  });
+
+  it("reuses a persistent preparer workspace while cleaning each run's temporary directory", async () => {
+    const { config, references } = await setup();
+    let workingDirectory = "";
+    let workspaceDirectory = "";
+    let preparationCount = 0;
+    const configured: NormalizedWriteOnceConfig = {
+      ...config,
+      preparers: [
+        {
+          id: "persistent-provider",
+          canPrepare: () => true,
+          async prepare(_assigned, context) {
+            preparationCount += 1;
+            workingDirectory = context.workingDirectory;
+            workspaceDirectory = context.workspaceDirectory;
+            workspaces.push(workspaceDirectory);
+            await mkdir(workspaceDirectory, { recursive: true });
+            try {
+              await access(join(workspaceDirectory, "cached.txt"));
+            } catch {
+              await writeFile(join(workspaceDirectory, "cached.txt"), "cached", "utf8");
+            }
+            return { resources: [{ root: workspaceDirectory }] };
+          },
+        },
+      ],
+    };
+
+    const first = await prepareSourceReferences(references, configured);
+    await expect(access(workingDirectory)).resolves.toBeUndefined();
+    await expect(access(join(workspaceDirectory, "cached.txt"))).resolves.toBeUndefined();
+    await cleanupPreparedResources(first);
+    await expect(access(workingDirectory)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(access(join(workspaceDirectory, "cached.txt"))).resolves.toBeUndefined();
+
+    const second = await prepareSourceReferences(references, configured);
+    expect(second.preparations[0]?.workspaceDirectory).toBe(workspaceDirectory);
+    expect(preparationCount).toBe(2);
+    await cleanupPreparedResources(second);
   });
 
   it("cleans a preparer's temporary directory when preparation rejects with a non-Error value", async () => {

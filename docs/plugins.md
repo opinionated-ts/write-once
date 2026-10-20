@@ -20,12 +20,14 @@ Direct capability arrays are registered first, followed by plugin contributions 
 
 - `canPrepare(reference, context)` synchronously identifies source references this preparer can prepare.
 - `prepare(references, context)` may be asynchronous and receives all references assigned to that preparer for the run.
-- `context.workingDirectory` is a Write Once-managed temporary directory for resources created during this run. Put prepared resources inside it; Write Once cleans it up after generation.
+- `context.workingDirectory` is a Write Once-managed temporary directory for per-run files. Write Once removes it after generation, including failure paths.
+- `context.workspaceDirectory` is a stable directory scoped to the project root and preparer ID. It survives generation runs and is never removed by core cleanup.
+- Put disposable files in `workingDirectory` and reusable materialized data, such as a local repository checkout, in `workspaceDirectory`. The plugin owns persistent workspace contents, invalidation, and cleanup.
 - Return `{ resources, metadata? }`. `metadata` belongs to the whole batch and must be a record-like object when supplied.
 
 Each `PreparedResource` contains a `root` and optional resource-specific `metadata`. Reference assignments live on `PreparedResourceBatch.references`, not on individual resources. Use resource metadata to describe each root (for example, a provider path or source key) and batch metadata for state shared across the preparation (for example, a revision or provider response summary).
 
-Every resource root must stay inside the preparer's working directory. If a preparer returns several roots, its resolver must return one of those declared roots for the source being resolved.
+Every resource root must stay inside either the preparer's temporary directory or persistent workspace. If a preparer returns several roots, its resolver must return one of those declared roots for the source being resolved.
 
 ### `ResourceResolver`
 
@@ -198,7 +200,7 @@ Register the extractor and hook alongside the provider's capabilities. Only one 
 - Add an integration test using a temporary project and `runGenerate` to verify the generated output, cleanup, and that invalid roots or missing resources leave destinations unchanged.
 - Test registration-order conflicts explicitly when more than one extension could match.
 - Keep provider-specific credentials outside source files and logs. Handle authentication failures, timeouts, retries, rate limits, and stale revisions in the provider adapter.
-- Treat remote responses as untrusted input. Validate returned paths and metadata before using them, and only materialize resources under the provided `workingDirectory`.
+- Treat remote responses as untrusted input. Validate returned paths and metadata before using them, and only materialize resources under the provided `workingDirectory` or `workspaceDirectory`.
 - Use `bun run test`, `bun check`, and `bun run build` to validate changes.
 
 ## Current support and limitations

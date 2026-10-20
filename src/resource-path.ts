@@ -127,16 +127,23 @@ export async function normalizeResolvedResource(
       );
     }
 
-    // Keep the assigned temporary-root check deterministic.
-    if (assignedPreparation !== undefined && isWithin(assignedPreparation.workingDirectory, root)) {
-      const realWorkingDirectory = await realpath(assignedPreparation.workingDirectory);
-      if (!isWithin(realWorkingDirectory, realRoot)) {
-        return fail(
-          source,
-          resolverId,
-          context,
-          `Resolved root escapes preparer "${assignedPreparation.preparerId}" temporary directory.`,
-        );
+    // Validate physical containment for both ephemeral and persistent preparer roots.
+    if (assignedPreparation !== undefined) {
+      const allowedDirectories = [
+        assignedPreparation.workingDirectory,
+        assignedPreparation.workspaceDirectory,
+      ];
+      const allowedDirectory = allowedDirectories.find((directory) => isWithin(directory, root));
+      if (allowedDirectory !== undefined) {
+        const realAllowedDirectory = await realpath(allowedDirectory);
+        if (!isWithin(realAllowedDirectory, realRoot)) {
+          return fail(
+            source,
+            resolverId,
+            context,
+            `Resolved root escapes preparer "${assignedPreparation.preparerId}" assigned directory.`,
+          );
+        }
       }
     }
 

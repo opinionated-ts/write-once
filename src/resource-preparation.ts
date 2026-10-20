@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, relative, resolve, sep, join } from "node:path";
@@ -40,7 +41,14 @@ function isWithin(root: string, target: string): boolean {
 }
 
 function safeDirectoryName(id: string): string {
-  return id.replace(/[^A-Za-z0-9._-]/g, "-") || "preparer";
+  const name = id.replace(/[^A-Za-z0-9._-]/g, "-") || "preparer";
+  const suffix = createHash("sha256").update(id).digest("hex").slice(0, 12);
+  return `${name}-${suffix}`;
+}
+
+function projectWorkspaceDirectory(root: string): string {
+  const projectId = createHash("sha256").update(root).digest("hex").slice(0, 16);
+  return join(tmpdir(), "write-once", "workspaces", projectId);
 }
 
 function isPreparedResource(value: unknown): value is PreparedResource {
@@ -64,6 +72,7 @@ function isResourcePreparationResult(value: unknown): value is ResourcePreparati
 function validatePreparationResult(
   value: unknown,
   workingDirectory: string,
+  workspaceDirectory: string,
 ): ResourcePreparationResult {
   if (!isResourcePreparationResult(value)) {
     throw new TypeError(
@@ -73,9 +82,9 @@ function validatePreparationResult(
 
   for (const resource of value.resources) {
     const root = resolve(workingDirectory, resource.root);
-    if (!isWithin(workingDirectory, root)) {
+    if (!isWithin(workingDirectory, root) && !isWithin(workspaceDirectory, root)) {
       throw new TypeError(
-        "A prepared resource root must remain inside its assigned working directory.",
+        "A prepared resource root must remain inside its temporary directory or persistent workspace.",
       );
     }
   }
@@ -126,12 +135,15 @@ export async function prepareSourceReferences(
     const baseDirectory = join(tmpdir(), "write-once");
     await mkdir(baseDirectory, { recursive: true });
 
+    const workspaceBaseDirectory = projectWorkspaceDirectory(config.root);
     const batches = await mapConcurrent(
       assignments.batches,
       config.maxConcurrency,
       async ({ preparer, references: batchReferences }) => {
         let workingDirectory: string;
+        const workspaceDirectory = join(workspaceBaseDirectory, safeDirectoryName(preparer.id));
         try {
+          await mkdir(workspaceDirectory, { recursive: true });
           workingDirectory = await mkdtemp(
             join(baseDirectory, `${safeDirectoryName(preparer.id)}-`),
           );
@@ -139,12 +151,14 @@ export async function prepareSourceReferences(
           const result = await preparer.prepare(batchReferences, {
             cwd: config.root,
             workingDirectory,
+            workspaceDirectory,
           });
           return {
             preparerId: preparer.id,
             workingDirectory,
+            workspaceDirectory,
             references: batchReferences,
-            result: validatePreparationResult(result, workingDirectory),
+            result: validatePreparationResult(result, workingDirectory, workspaceDirectory),
           };
         } catch (cause) {
           throw new ResourcePreparationFailure(

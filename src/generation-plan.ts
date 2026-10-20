@@ -303,6 +303,7 @@ export async function resolveSourceReferences(
           : {
               preparerId: assignedPreparation.preparerId,
               workingDirectory: assignedPreparation.workingDirectory,
+              workspaceDirectory: assignedPreparation.workspaceDirectory,
               result: assignedPreparation.result,
             },
     };
