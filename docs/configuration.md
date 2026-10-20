@@ -71,6 +71,7 @@ JSON and YAML are supported for static configuration, but cannot express executa
 - `maxConcurrency` limits parallel file discovery and source processing. Leave it unset to use the built-in concurrency limits, or set a positive number to reduce parallel work.
 - `memoryBudgetMiB` sets the approximate memory budget for cached source text and defaults to `256` MiB. It must be a positive finite number. Large sources can still be processed when they exceed the budget.
 - `preparers`, `resolvers`, `extractors`, and `hooks` are programmatic extension points available in TypeScript or JavaScript config files.
+- `plugins` accepts ready-to-use contribution objects or zero-argument factory functions. Factories run once during configuration validation; wrap a factory in a closure to pass options.
 
 ## Security
 

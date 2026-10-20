@@ -133,6 +133,9 @@ export interface PluginContribution<
 export type PluginFactory<Contribution extends PluginContribution = PluginContribution> =
   () => Contribution;
 
+/** A plugin contribution created ahead of time or produced by a zero-argument factory. */
+export type PluginConfigEntry = PluginContribution | PluginFactory;
+
 /** A source reference and the destination context in which it was declared. */
 export interface SourceReferenceContext {
   source: string;

@@ -20,6 +20,7 @@ export type {
   MarkerBlock,
   MarkerToken,
   NamedFragmentSelector,
+  PluginConfigEntry,
   PluginContribution,
   PluginFactory,
   PreparedResource,

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   GenerationHook,
   HookOutput,
+  PluginConfigEntry,
   PluginContribution,
   PluginFactory,
   ResourcePreparer,
@@ -90,6 +91,10 @@ describe("public types", () => {
     expect(hookOnlyPlugin.extractors).toBeUndefined();
 
     expect([providerFactory(), extractorFactory(), mixedFactory()]).toHaveLength(3);
+
+    const configuredPlugin: PluginConfigEntry = hookOnlyPlugin;
+    const factoryPlugin: PluginConfigEntry = () => ({ hooks: [markdownHook] });
+    expect([configuredPlugin, factoryPlugin]).toHaveLength(2);
   });
 
   it("distinguishes body-only and full-block hook output", () => {

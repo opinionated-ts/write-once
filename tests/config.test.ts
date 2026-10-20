@@ -82,8 +82,24 @@ describe("validateConfig", () => {
         hooks: [{ ...hook, id: "mixed-hook" }],
       };
     };
+    const directPlugin = {
+      hooks: [{ ...hook, id: "direct-plugin-hook" }],
+    };
+    const configuredFactory = (suffix: string) => () => ({
+      hooks: [{ ...hook, id: suffix }],
+    });
     const result = validateConfig(
-      { hooks: [hook], plugins: [firstPlugin, secondPlugin, thirdPlugin, fourthPlugin] },
+      {
+        hooks: [hook],
+        plugins: [
+          firstPlugin,
+          directPlugin,
+          secondPlugin,
+          thirdPlugin,
+          fourthPlugin,
+          configuredFactory("configured-plugin-hook"),
+        ],
+      },
       "/repo",
     );
 
@@ -93,7 +109,9 @@ describe("validateConfig", () => {
       expect(result.value.hooks.map((item) => item.id)).toEqual([
         "format",
         "plugin-hook",
+        "direct-plugin-hook",
         "mixed-hook",
+        "configured-plugin-hook",
       ]);
       expect(result.value.extractors.map((item) => item.id)).toEqual([
         "plugin-extractor",
@@ -105,9 +123,12 @@ describe("validateConfig", () => {
   });
 
   it.each([
-    ["not-an-array", '"plugins" must be an array of plugin factory functions.'],
-    [[{}], '"plugins" must be an array of plugin factory functions.'],
-    [[() => null], "Each plugin factory must return an object with optional capability arrays."],
+    ["not-an-array", '"plugins" must be an array of plugin contributions or factory functions.'],
+    [
+      [{ preparers: "invalid" }],
+      '"plugins" must be an array of plugin contributions or factory functions.',
+    ],
+    [[() => null], "Each plugin must be an object with optional capability arrays."],
     [
       [
         () => {

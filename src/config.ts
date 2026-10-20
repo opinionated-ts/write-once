@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import type {
   ContentExtractor,
   GenerationHook,
+  PluginConfigEntry,
   PluginContribution,
   PluginFactory,
   ResourcePreparer,
@@ -29,8 +30,8 @@ export interface UserConfig {
   resolvers?: readonly ResourceResolver[];
   extractors?: readonly ContentExtractor[];
   hooks?: readonly GenerationHook[];
-  /** Plugin factories whose optional capabilities are composed during validation. */
-  plugins?: readonly PluginFactory[];
+  /** Plugin contributions or factories composed during configuration validation. */
+  plugins?: readonly PluginConfigEntry[];
 }
 
 /** Backwards-compatible name for {@link UserConfig}. */
@@ -188,28 +189,30 @@ export function validateConfig(
   const includePatterns = include ?? ["**/*"];
   const excludePatterns = exclude ?? DEFAULT_EXCLUDE_PATTERNS;
 
-  const pluginFactories = value["plugins"] === undefined ? [] : value["plugins"];
+  const pluginEntries = value["plugins"] === undefined ? [] : value["plugins"];
   if (
-    !Array.isArray(pluginFactories) ||
-    !pluginFactories.every((plugin) => typeof plugin === "function")
+    !Array.isArray(pluginEntries) ||
+    !pluginEntries.every((plugin) => typeof plugin === "function" || isPluginContribution(plugin))
   ) {
-    return invalid('"plugins" must be an array of plugin factory functions.', "plugins");
+    return invalid(
+      '"plugins" must be an array of plugin contributions or factory functions.',
+      "plugins",
+    );
   }
 
   const contributions: PluginContribution[] = [];
-  for (const factory of pluginFactories as readonly PluginFactory[]) {
-    let contribution: unknown;
-    try {
-      contribution = factory();
-    } catch (cause) {
-      const reason = cause instanceof Error ? cause.message : String(cause);
-      return invalid(`A plugin factory failed: ${reason}`, "plugins");
+  for (const entry of pluginEntries as readonly PluginConfigEntry[]) {
+    let contribution: unknown = entry;
+    if (typeof entry === "function") {
+      try {
+        contribution = (entry as PluginFactory)();
+      } catch (cause) {
+        const reason = cause instanceof Error ? cause.message : String(cause);
+        return invalid(`A plugin factory failed: ${reason}`, "plugins");
+      }
     }
     if (!isPluginContribution(contribution)) {
-      return invalid(
-        "Each plugin factory must return an object with optional capability arrays.",
-        "plugins",
-      );
+      return invalid("Each plugin must be an object with optional capability arrays.", "plugins");
     }
     contributions.push(contribution);
   }
