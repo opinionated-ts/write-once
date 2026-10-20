@@ -1,6 +1,6 @@
 # CLI workflow
 
-Use the CLI to synchronize generated fragments after editing their source content. The v1 command is:
+Use the CLI to synchronize generated fragments after editing their source content. Run:
 
 ```sh
 write-once generate
@@ -33,7 +33,7 @@ Diagnostics are written to stderr and include severity (`error`, `warning`, or `
 - A failed plan prevents destination writes for that run.
 - Writes are atomic per file, not across the project. If a later rename fails after earlier files were replaced, those earlier updates remain; write-once reports the partial result and does not claim rollback.
 
-The v1 CLI does not provide `check` or dry-run modes. Remote resolvers and language-aware semantic extractors are also future work; the built-in resolver reads local text files only.
+The CLI does not yet provide `check` or dry-run modes. The built-in resolver reads local text files; register a provider plugin such as [write-once-github](https://github.com/opinionated-ts/write-once-github) for GitHub sources. Language-aware semantic extraction requires a custom extractor.
 
 ## Related guides
 

@@ -93,7 +93,7 @@ Only three attributes affect behavior. Other attributes and surrounding text are
 | `source`                          | Generate from the whole resolved source   |
 | `source` + `name`                 | Extract a named fragment from that source |
 | `source` + `range`                | Extract a range from that source          |
-| `name` + `range` without `source` | Invalid selector in v1                    |
+| `name` + `range` without `source` | Invalid selector                          |
 
 A missing referenced name is an error. Named fragments are searched only in the resource named by `source`, never project-wide.
 

@@ -26,8 +26,9 @@ Use the exported contracts such as `ResourcePreparer`, `ResourceResolver`, `Cont
 
 ## Current limitations
 
-- The built-in resolver supports local text files only.
-- There is no project-wide named-fragment lookup, remote repository resolver, or language-aware semantic extraction in v1.
+- The built-in resolver supports local text files; install and register a provider plugin such as [write-once-github](https://github.com/opinionated-ts/write-once-github) to resolve GitHub repository files.
+- Named fragments are looked up only within the source resource selected by `source`, not across the whole project.
+- Language-aware semantic extraction is not built in. A custom extractor can implement symbol- or AST-based selection.
 - The CLI does not yet provide `check` or dry-run modes.
 
 For the everyday workflow, see the [CLI guide](cli.md). For marker syntax, see [Markers and selectors](markers.md).

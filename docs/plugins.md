@@ -203,6 +203,6 @@ Register the extractor and hook alongside the provider's capabilities. Only one 
 
 ## Current support and limitations
 
-The built-in resolver supports local files. The example above is illustrative only; GitHub, Google Drive, OneDrive, remote repository access, and language-aware semantic extraction are not included integrations. Implement and register an adapter when a project needs one.
+The core's built-in resolver supports local files. The ecosystem also provides [write-once-github](https://github.com/opinionated-ts/write-once-github) for GitHub repository sources and [write-once-markdown](https://github.com/opinionated-ts/write-once-markdown) for fenced code output in Markdown. These are separately installed plugins, registered through the config file; they are not bundled into the core package. Other providers, such as Google Drive or OneDrive, require their own adapters. Language-aware semantic extraction is not built in, but can be implemented with a custom extractor.
 
 See the [TypeScript API](api.md) for exported contracts and the [configuration guide](configuration.md) for config formats and options.
