@@ -62,52 +62,40 @@ The destination now contains the source text. Run the command again whenever you
 
 write-once uses plain-text markers to identify source fragments and generated destinations. It does not parse Markdown or the host language, so the same approach can be used for documentation, agent instructions, skills, code examples, and other reusable text.
 
-Write Once plans and validates destinations before writing, replaces only the generated content, and writes changed files atomically per file. Writes are not atomic across the entire project, so a later file-write failure can leave earlier files updated. The core includes a local-file resolver, and plugins can add other source providers or output transformations.
+Only generated sections are replaced; the rest of each destination remains yours. Plugins extend write-once when you need to reuse content from other sources or tailor generated output.
 
 ## Example
 
-Combine the GitHub and Markdown plugins to keep a code example in your README synchronized with a file in another repository. The GitHub plugin resolves the remote source; the Markdown plugin wraps extracted code in a language-labelled fence.
-
-Install the core and both plugins:
+Combine the GitHub and Markdown plugins to publish a code example from another repository without copying it by hand.
 
 ```sh
 bun add -d write-once write-once-github write-once-markdown
 ```
 
-Create `write-once.config.ts`:
+Register both plugins in `write-once.config.ts`:
 
 ```ts
 import { defineConfig } from "write-once";
 import { githubPlugin } from "write-once-github";
 import { markdownPlugin } from "write-once-markdown";
 
-export default defineConfig({
-  plugins: [githubPlugin, markdownPlugin],
-});
+export default defineConfig({ plugins: [githubPlugin, markdownPlugin] });
 ```
 
-Add a generated block to a Markdown destination such as `README.md`:
+Then reference the source file in your README:
 
 <!-- write-once-ignore-start -->
 
 <!-- prettier-ignore -->
 ````md
 <!-- fragment source="repo:opinionated-ts/write-once@main/src/index.ts" -->
-This placeholder is replaced with the source file and rendered as a TypeScript code fence.
+Your synchronized code example appears here.
 <!-- /fragment -->
 ````
 
 <!-- write-once-ignore-end -->
 
-Then run generation:
-
-```sh
-bunx write-once generate
-```
-
-The GitHub plugin accepts references in the form `repo:owner/repository/path/to/file` or `repo:owner/repository@ref/path/to/file`. Omit `@ref` to use the repository's default branch, or specify a branch, tag, or commit SHA to choose a version. Public repositories need no token; private repositories use `GITHUB_TOKEN`. The Markdown plugin fences non-Markdown source content only when the destination is Markdown and infers the fence language from the source extension.
-
-You can also select a range from a remote source by adding `range`, for example `range="1:1-12:1"` to a fragment marker. Coordinates are 1-based, with an inclusive start and exclusive end. Named fragments work when the referenced source file contains a matching `fragment name="..."` declaration. Language-aware symbol extraction is not built in; use a custom extractor if you need AST-level symbol or reference selection.
+Run `bunx write-once generate` to refresh the example. The GitHub plugin retrieves the source; the Markdown plugin formats it as a code fence. See the plugin guides for configuration details and other supported options.
 
 ## Guides
 
