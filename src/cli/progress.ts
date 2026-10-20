@@ -3,6 +3,7 @@ import type { GenerationProgressEvent, GenerationProgressReporter } from "../typ
 export interface CliProgressOptions {
   isTTY: boolean;
   write: (text: string) => void;
+  columns?: number;
   delayMs?: number;
 }
 
@@ -11,6 +12,16 @@ interface ActiveOperation {
 }
 
 const SPINNER_FRAMES = ["-", "\\", "|", "/"] as const;
+
+function fitTerminalLine(text: string, columns: number | undefined): string {
+  // Leave the final terminal column unused to avoid delayed-wrap behavior.
+  if (columns === undefined || columns < 1) return text;
+  const maxLength = Math.max(1, columns - 1);
+  const characters = Array.from(text);
+  if (characters.length <= maxLength) return text;
+  if (maxLength <= 1) return "…";
+  return `${characters.slice(0, maxLength - 1).join("")}…`;
+}
 
 // Keep a single delayed indicator for concurrent plugin operations.
 export function createCliProgressReporter(options: CliProgressOptions): {
@@ -29,9 +40,8 @@ export function createCliProgressReporter(options: CliProgressOptions): {
     const operations = [...active.entries()];
     const [, operation] = operations[frame % operations.length]!;
     const suffix = operations.length > 1 ? ` (+${operations.length - 1} more)` : "";
-    options.write(
-      `\r\x1b[2K${SPINNER_FRAMES[frame % SPINNER_FRAMES.length]} ${operation.message}${suffix}`,
-    );
+    const line = `${SPINNER_FRAMES[frame % SPINNER_FRAMES.length]} ${operation.message}${suffix}`;
+    options.write(`\r\x1b[2K${fitTerminalLine(line, options.columns)}`);
     frame += 1;
   };
 

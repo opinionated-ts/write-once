@@ -79,4 +79,32 @@ describe("createCliProgressReporter", () => {
     expect(vi.getTimerCount()).toBe(0);
     reporter.dispose();
   });
+
+  it("truncates spinner updates to prevent wrapping in narrow terminals", async () => {
+    vi.useFakeTimers();
+    const write = vi.fn();
+    const reporter = createCliProgressReporter({
+      isTTY: true,
+      columns: 32,
+      write,
+      delayMs: 10,
+    });
+
+    reporter.report({
+      pluginId: "github",
+      phase: "start",
+      message: 'Plugin "GitHub": Resolving repository references and preparing local checkouts.',
+    });
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(80);
+
+    const frames = write.mock.calls.flat().map(String);
+    for (const frame of frames) {
+      const line = frame.startsWith("\r\x1b[2K") ? frame.slice(5) : frame;
+      expect(Array.from(line).length).toBeLessThan(32);
+    }
+    expect(frames.some((frame) => frame.includes("…"))).toBe(true);
+
+    reporter.dispose();
+  });
 });

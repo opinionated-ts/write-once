@@ -20,6 +20,7 @@ const generateCommand = defineCommand({
   async run({ args }) {
     const progress = createCliProgressReporter({
       isTTY: process.stderr.isTTY,
+      columns: process.stderr.columns,
       write: (text) => process.stderr.write(text),
     });
     const result = await (async () => {
