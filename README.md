@@ -88,7 +88,7 @@ Then reference the source file in your README:
 
 <!-- prettier-ignore -->
 ````md
-<!-- fragment source="repo:opinionated-ts/write-once@main/src/index.ts" -->
+<!-- fragment source="repo:opinionated-ts/write-once/src/index.ts" -->
 Your synchronized code example appears here.
 <!-- /fragment -->
 ````
