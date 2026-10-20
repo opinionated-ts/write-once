@@ -22,7 +22,7 @@ Direct capability arrays are registered before plugins, and plugins are handled 
 - `prepare(references, context)` may be asynchronous and receives all references assigned to that preparer for the run.
 - `context.workingDirectory` is a Write Once-managed temporary directory for per-run files. Write Once removes it after generation, including failure paths.
 - `context.workspaceDirectory` is a stable directory scoped to the project root and preparer ID. It survives generation runs and is never removed by core cleanup.
-- `context.reportProgress(message)` emits a contextual status update for long-running work. The CLI delays display briefly to avoid noise from fast operations; plugin code does not need to implement a spinner.
+- Use `context.reportProgress(message)` to keep users informed while a plugin performs a long-running operation.
 - Put disposable files in `workingDirectory` and reusable materialized data, such as a local repository checkout, in `workspaceDirectory`. The plugin owns persistent workspace contents, invalidation, and cleanup.
 - Return `{ resources, metadata? }`. `metadata` belongs to the whole batch and must be a record-like object when supplied.
 
