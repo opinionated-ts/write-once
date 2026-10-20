@@ -89,7 +89,7 @@ describe("validateConfig", () => {
       preparers: [namedPreparer],
       hooks: [{ ...hook, id: "direct-plugin-hook" }],
     };
-    const configuredFactory = (suffix: string) => () => ({
+    const createConfiguredPlugin = (suffix: string) => ({
       hooks: [{ ...hook, id: suffix }],
     });
     const result = validateConfig(
@@ -101,7 +101,7 @@ describe("validateConfig", () => {
           secondPlugin,
           thirdPlugin,
           fourthPlugin,
-          configuredFactory("configured-plugin-hook"),
+          createConfiguredPlugin("configured-plugin-hook"),
         ],
       },
       "/repo",

@@ -1,6 +1,6 @@
 # Plugin development
 
-Write Once exposes TypeScript extension points for adapting source providers, selecting content, and customizing generated blocks. A plugin contributes any combination of `preparers`, `resolvers`, `extractors`, and `hooks`. Register either a ready-to-use `PluginContribution` object or a zero-argument factory that returns one through `plugins`. Write Once evaluates each factory once while validating the config and composes its optional capabilities.
+Write Once plugins let you connect additional source providers, customize content selection, and adjust generated output. Register a plugin in the `plugins` array using either the plugin factory or the plugin it returns.
 
 The project does not currently load, install, or discover third-party plugins automatically. Register their capabilities through `preparers`, `resolvers`, `extractors`, and `hooks` in an executable TypeScript or JavaScript config.
 
@@ -12,7 +12,7 @@ The project does not currently load, install, or discover third-party plugins au
 4. **Customize output.** Every registered `pre-write` hook runs for a generated block in registration order. Each hook receives the current `text` and `fullText` state produced by the previous hook. Without a matching hook, the extracted text is used as-is.
 5. **Write destinations.** The pipeline plans and validates destination output before writing. A failure during preparation, resolution, extraction, or a hook prevents destination writes for that generation plan. Writes are atomic per file, not across the entire project.
 
-Direct capability arrays are registered first, followed by plugin contributions in `plugins` array order. Contribution objects are used as provided; factories are invoked once during configuration validation, so use a closure when the factory needs options (for example, `() => createPlugin(options)`). A contribution's optional `name` is used in progress messages; when omitted, the preparer's `id` is shown. Within each capability, registration order is the conflict-resolution rule. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
+Direct capability arrays are registered before plugins, and plugins are handled in the order listed. A plugin's optional `name` is used in progress messages; when omitted, the preparer's `id` is shown. Within each capability, registration order determines which matching extension is selected. Keep each capability's `can*` method synchronous, deterministic, and narrow enough not to claim references it cannot handle.
 
 ## Preparation contracts
 
