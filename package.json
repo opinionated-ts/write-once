@@ -73,7 +73,7 @@
     "@opinionated-ts/result": "^1.0.0",
     "c12": "^3.3.3",
     "citty": "^0.2.2",
-    "ignore": "^7.0.12",
+    "ignore": "^7.0.13",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
@@ -82,7 +82,7 @@
     "@types/bun": "^1.4.3",
     "@types/node": "^26.6.5",
     "@vitest/coverage-istanbul": "5.0.5",
-    "skills": "^1.7.2",
+    "skills": "^1.7.4",
     "tsdown": "^0.23.1",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
