@@ -73,17 +73,17 @@
     "@opinionated-ts/result": "^1.0.0",
     "c12": "^3.3.3",
     "citty": "^0.2.2",
-    "ignore": "^7.0.12",
+    "ignore": "^7.0.14",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
     "@opinionated-ts/config": "^1.9.2",
     "@semantic-release/exec": "^7.1.0",
-    "@types/bun": "^1.4.3",
-    "@types/node": "^26.6.5",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
     "@vitest/coverage-istanbul": "5.0.5",
-    "skills": "^1.7.2",
-    "tsdown": "^0.23.1",
+    "skills": "^1.7.4",
+    "tsdown": "^0.23.3",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
     "zod": "^4.6.7"
